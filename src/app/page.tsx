@@ -1,3 +1,4 @@
+
 import { generatePersonalizedWelcomeMessage, type PersonalizedWelcomeMessageInput } from '@/ai/flows/personalized-welcome';
 import PersonalizedWelcome from '@/components/landing/personalized-welcome';
 import { Header } from '@/components/landing/header';
@@ -6,6 +7,7 @@ import { IULSection } from '@/components/landing/iul-section';
 import { ZoomSection } from '@/components/landing/zoom-section';
 import { ContactSection } from '@/components/landing/contact-section';
 import { Footer } from '@/components/landing/footer';
+import { ChatWidget } from '@/components/landing/chat-widget'; // Added ChatWidget import
 
 export default async function HomePage() {
   // Example user data for personalized welcome.
@@ -38,6 +40,7 @@ export default async function HomePage() {
         <ContactSection />
       </main>
       <Footer />
+      <ChatWidget /> {/* Added ChatWidget component here */}
     </div>
   );
 }
