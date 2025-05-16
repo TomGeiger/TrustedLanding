@@ -28,7 +28,7 @@ export function HeroSection() {
         </div>
         <div className="relative h-64 md:h-96 lg:h-[450px] rounded-lg overflow-hidden shadow-2xl">
           <Image
-            src="/images/hero-banner-financial-planning.jpg"
+            src="/images/diverse-group.jpg"
             alt="Financial Planning"
             layout="fill"
             objectFit="cover"

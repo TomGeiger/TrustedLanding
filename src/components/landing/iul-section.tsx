@@ -1,3 +1,4 @@
+
 import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { SectionWrapper } from '@/components/landing/section-wrapper';
@@ -17,7 +18,7 @@ const iulFeatures = [
   {
     icon: <Umbrella className="h-8 w-8 text-primary" />,
     title: "Tax Advantages & Flexibility",
-    description: "Enjoy tax-deferred growth, tax-free death benefits, and flexible premium payments.",
+    description: "Enjoy tax-deferred cash value growth, tax-free death benefits, and flexible premium payments.",
   },
 ];
 
@@ -29,7 +30,11 @@ export function IULSection() {
           Understanding Indexed Universal Life (IUL) Insurance
         </h2>
         <p className="mt-4 text-lg text-muted-foreground max-w-3xl mx-auto">
-          IUL insurance offers a unique combination of death benefit protection and the opportunity to build cash value. It's a versatile tool for long-term financial planning.
+          Indexed Universal Life (IUL) insurance is a type of permanent life insurance that offers a death benefit along with the potential to build cash value over time.
+          Unlike traditional universal life insurance, IUL policies provide the opportunity for cash value growth linked to the performance of a stock market index, such as the S&P 500®.
+          This means you can participate in some of the market's gains, often up to a certain cap rate, without being directly invested in the market.
+          Crucially, IUL policies typically include a 'floor,' which is a minimum guaranteed interest crediting rate (often 0%), protecting your accumulated cash value from market downturns.
+          This combination of potential upside growth and downside protection, along with flexible premium options and tax advantages, makes IUL a versatile tool for long-term financial planning, supplemental retirement income, or estate planning.
         </p>
       </div>
 
@@ -67,7 +72,7 @@ export function IULSection() {
         </div>
       </div>
        <p className="mt-10 text-center text-sm text-muted-foreground">
-        Disclaimer: IUL policies are complex financial instruments. Consult with a qualified financial advisor to determine if an IUL policy is suitable for your individual needs and circumstances.
+        Disclaimer: IUL policies are complex financial instruments. Consult with a qualified financial advisor to determine if an IUL policy is suitable for your individual needs and circumstances. Life insurance policies are subject to fees, charges, and surrender charges. Guarantees are based on the claims-paying ability of the issuing insurance company.
       </p>
     </SectionWrapper>
   );
