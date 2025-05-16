@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { SectionWrapper } from '@/components/landing/section-wrapper';
 import { CalendarDays, Video, Coffee, Hourglass } from 'lucide-react';
 import Image from 'next/image';
+import Link from 'next/link';
 
 const motivationalQuotes = [
   "The secret of getting ahead is getting started.",
@@ -56,10 +57,13 @@ export function ZoomSection() {
               <CardDescription className="text-lg text-muted-foreground">
                 Get ready! Trish will soon be hosting daily sessions for a dose of motivation and financial wisdom to start your day right! <strong className="text-primary">Coming Soon!</strong>
               </CardDescription>
+              <p className="text-sm text-muted-foreground mt-2 text-center md:text-left">
+                Curious about the host? <Link href="/about-trish" className="font-medium text-primary hover:underline">Meet Patricia &ldquo;Trish&rdquo; Geiger</Link>.
+              </p>
             </CardHeader>
             <CardContent className="space-y-6">
               {quote && (
-                <div className="mt-0 mb-6 p-4 border-l-4 border-accent bg-accent/20 rounded-r-md"> {/* Changed bg-accent/10 to bg-accent/20 */}
+                <div className="mt-0 mb-6 p-4 border-l-4 border-accent bg-accent/20 rounded-r-md">
                   <p className="italic text-accent/90 text-center md:text-left">
                     &ldquo;{quote}&rdquo;
                   </p>
