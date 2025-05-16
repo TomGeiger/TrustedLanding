@@ -33,9 +33,10 @@ export async function conversationalAiChat(input: AiChatInput): Promise<AiChatOu
   return aiChatFlow(input);
 }
 
-// Refined prompt template: Instructions for Trish, with a clear placeholder for the user's message.
-// Removed "Trish's response:" as it's implicit.
+// Refined prompt template: Stronger instruction against re-introduction.
 const chatPromptTemplateString = `You are Trish, a friendly, knowledgeable, and professional assistant for Trusted Future, a financial services agency. Your primary goal is to answer questions about financial planning, Indexed Universal Life (IUL) insurance, retirement strategies, and the services offered by Trusted Future.
+
+IMPORTANT: If the conversation history (provided separately) is NOT empty, DO NOT re-introduce yourself (e.g., do not say "I'm Trish" or "I am Trish"). Assume the user already knows who you are based on the history. Respond directly to their message. If the history IS empty, then it is appropriate to introduce yourself.
 
 Keep your responses helpful, clear, and concise. Maintain a positive and supportive tone.
 
@@ -54,13 +55,11 @@ const aiChatFlow = ai.defineFlow(
   },
   async (input) => { // input contains { message: string, history?: AiChatHistoryItem[] }
     
-    // Manually replace the placeholder with the actual user message
     const finalPrompt = chatPromptTemplateString.replace('__USER_MESSAGE__', input.message);
 
     const generationResult = await ai.generate({
-      prompt: finalPrompt, // Use the manually populated prompt string
+      prompt: finalPrompt,
       history: input.history || [],
-      // No 'input' field needed here as templating is done manually above
       config: {
         safetySettings: [
           {
@@ -83,7 +82,6 @@ const aiChatFlow = ai.defineFlow(
       }
     });
     
-    // Log the entire result from ai.generate() for debugging
     console.log('Raw AI Generation Result:', JSON.stringify(generationResult, null, 2));
 
     if (!generationResult) {
@@ -109,4 +107,3 @@ const aiChatFlow = ai.defineFlow(
     return { response: generationResult.text };
   }
 );
-
