@@ -38,7 +38,7 @@ export function ZoomSection() {
                 <div>
                   <h4 className="font-semibold text-lg text-primary">Schedule:</h4>
                   <p className="text-muted-foreground">Monday - Friday</p>
-                  <p className="text-muted-foreground">8:00 AM - 8:30 AM (Your Timezone)</p>
+                  <p className="text-muted-foreground">8:00 AM - 8:30 AM (EST)</p>
                 </div>
               </div>
               <div className="flex items-start gap-4">

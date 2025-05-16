@@ -7,19 +7,19 @@ const contactDetails = [
   {
     icon: <Phone className="h-6 w-6 text-primary" />,
     title: "Phone",
-    value: "(555) 123-4567",
-    href: "tel:5551234567",
+    value: "(919) 522-3462",
+    href: "tel:9195223462",
   },
   {
     icon: <Mail className="h-6 w-6 text-primary" />,
     title: "Email",
-    value: "info@trustedfuture.com",
-    href: "mailto:info@trustedfuture.com",
+    value: "pgeiger.iul@gmail.com",
+    href: "mailto:pgeiger.iul@gmail.com",
   },
   {
     icon: <MapPin className="h-6 w-6 text-primary" />,
     title: "Office (By Appointment)",
-    value: "123 Future Lane, Suite 100, Financial District, Your City",
+    value: "116 Donmoor Ct, Garner NC 27527-2500",
     href: "#", // Placeholder for map link
   },
 ];

@@ -27,11 +27,11 @@ export function HeroSection() {
         </div>
         <div className="relative h-64 md:h-96 lg:h-[450px] rounded-lg overflow-hidden shadow-2xl">
           <Image
-            src="https://placehold.co/600x450/3F51B5/E8EAF6.png?text=Trusted+Future"
-            alt="Financial Planning"
+            src="/images/hero-banner-financial-planning.jpg" // Updated to a local image path
+            alt="A diverse group of people discussing financial plans around a table."
             layout="fill"
             objectFit="cover"
-            data-ai-hint="financial planning meeting"
+            // data-ai-hint removed as we are using a specific local image
             className="transform hover:scale-105 transition-transform duration-500"
           />
            <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent"></div>
