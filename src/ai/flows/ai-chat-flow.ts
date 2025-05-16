@@ -33,9 +33,9 @@ export async function conversationalAiChat(input: AiChatInput): Promise<AiChatOu
   return aiChatFlow(input);
 }
 
-// Simplified prompt: Relies on the `history` parameter of `ai.generate` for past conversation.
-// The `{{{message}}}` placeholder is for the current user message.
-const chatPrompt = `You are Trish, a friendly, knowledgeable, and professional assistant for Trusted Future, a financial services agency. Your primary goal is to answer questions about financial planning, Indexed Universal Life (IUL) insurance, retirement strategies, and the services offered by Trusted Future.
+// Refined prompt template: Instructions for Trish, with a clear placeholder for the user's message.
+// Removed "Trish's response:" as it's implicit.
+const chatPromptTemplateString = `You are Trish, a friendly, knowledgeable, and professional assistant for Trusted Future, a financial services agency. Your primary goal is to answer questions about financial planning, Indexed Universal Life (IUL) insurance, retirement strategies, and the services offered by Trusted Future.
 
 Keep your responses helpful, clear, and concise. Maintain a positive and supportive tone.
 
@@ -43,8 +43,7 @@ If a user asks a question you cannot answer or that is outside the scope of fina
 
 If the user expresses interest in a consultation, scheduling a meeting, or wants to provide their contact details, guide them to use the contact form fields (Name, Email, Phone) available in the chat window or to visit the "Contact Us" section of the website for more direct contact options. Do not ask for their personal contact information directly in the chat.
 
-User's latest message: {{{message}}}
-Trish's response:`;
+User's latest message: __USER_MESSAGE__`;
 
 
 const aiChatFlow = ai.defineFlow(
@@ -54,12 +53,14 @@ const aiChatFlow = ai.defineFlow(
     outputSchema: AiChatOutputSchema,
   },
   async (input) => { // input contains { message: string, history?: AiChatHistoryItem[] }
-    const generationResult = await ai.generate({ // The result of ai.generate() is the response object itself
-      prompt: chatPrompt,
+    
+    // Manually replace the placeholder with the actual user message
+    const finalPrompt = chatPromptTemplateString.replace('__USER_MESSAGE__', input.message);
+
+    const generationResult = await ai.generate({
+      prompt: finalPrompt, // Use the manually populated prompt string
       history: input.history || [],
-      input: { 
-        message: input.message,
-      },
+      // No 'input' field needed here as templating is done manually above
       config: {
         safetySettings: [
           {
@@ -90,7 +91,6 @@ const aiChatFlow = ai.defineFlow(
         return { response: "I'm sorry, the AI service returned an unexpected empty result. Please try again." };
     }
     
-    // Check for the 'text' property directly on the generationResult
     if (!generationResult.text) {
         const finishReason = generationResult.candidates?.[0]?.finishReason;
         const safetyRatings = generationResult.candidates?.[0]?.safetyRatings;
@@ -106,6 +106,7 @@ const aiChatFlow = ai.defineFlow(
         console.error('AI did not return text. Finish reason:', finishReason, 'Full generation result:', JSON.stringify(generationResult, null, 2));
         return { response: "I'm sorry, I encountered an issue generating a response. Could you please rephrase or try again?" };
     }
-    return { response: generationResult.text }; // Use generationResult.text
+    return { response: generationResult.text };
   }
 );
+
