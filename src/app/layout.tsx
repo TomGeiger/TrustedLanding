@@ -1,3 +1,4 @@
+
 import type {Metadata} from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
@@ -14,8 +15,11 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Future Landing - Trusted Future',
-  description: 'Your trusted partner in financial services.',
+  title: {
+    default: 'Trusted Future - Your Partner in Financial Security',
+    template: '%s - Trusted Future',
+  },
+  description: 'Trusted Future specializes in providing personalized financial solutions, including Indexed Universal Life Insurance, to help you achieve your long-term goals.',
 };
 
 export default function RootLayout({
