@@ -16,7 +16,9 @@ import {
   SheetFooter,
   SheetClose,
 } from '@/components/ui/sheet';
-import { MessageSquare, Send, User, Mail, Phone, CheckCircle } from 'lucide-react';
+import { MessageSquare, Send, User, Mail, Phone, CheckCircle, AlertTriangle } from 'lucide-react';
+import { sendChatInquiry, type ChatInquiryInput } from '@/app/actions/send-chat-inquiry';
+import { useToast } from "@/hooks/use-toast";
 
 export function ChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
@@ -26,31 +28,50 @@ export function ChatWidget() {
   const [phone, setPhone] = useState('');
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    console.log('Chat Inquiry Submitted:', { name, email, phone, question });
-    setIsSubmitted(true);
+
+    const inquiryData: ChatInquiryInput = { name, email, phone, question };
+
+    const result = await sendChatInquiry(inquiryData);
+
+    if (result.success) {
+      setIsSubmitted(true);
+      toast({
+        title: "Inquiry Sent!",
+        description: "Trish or her team will get back to you soon.",
+        variant: "default",
+      });
+      // Clear form fields after successful submission
+      setQuestion('');
+      setName('');
+      setEmail('');
+      setPhone('');
+    } else {
+      toast({
+        title: "Submission Failed",
+        description: result.message || "Could not submit your inquiry. Please try again.",
+        variant: "destructive",
+      });
+    }
     setIsLoading(false);
-    // Clear form for next interaction, if sheet remains open or is reopened before full reset
-    setQuestion('');
-    setName('');
-    setEmail('');
-    setPhone('');
   };
 
   const handleSheetOpenChange = (open: boolean) => {
     setIsOpen(open);
     if (!open) {
-      // Reset submission state and form fields when sheet is closed
+      // Reset submission state when sheet is closed, fields are cleared on successful submit or if re-opened
       setIsSubmitted(false);
-      setQuestion('');
-      setName('');
-      setEmail('');
-      setPhone('');
+      // Optionally, clear fields if form was not submitted successfully and sheet is closed
+      // if (!isSubmitted) {
+      //   setQuestion('');
+      //   setName('');
+      //   setEmail('');
+      //   setPhone('');
+      // }
     }
   };
 

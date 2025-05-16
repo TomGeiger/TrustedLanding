@@ -25,7 +25,7 @@ export default function AboutTrishPage() {
             <div className="lg:col-span-1 flex justify-center">
               <div className="relative h-64 w-64 md:h-80 md:w-80 rounded-full overflow-hidden shadow-2xl border-4 border-primary/30">
                 <Image
-                  src="/images/trish2.jpeg"
+                  src="/images/trish3.jpeg"
                   alt="Patricia 'Trish' Geiger"
                   layout="fill"
                   objectFit="cover"

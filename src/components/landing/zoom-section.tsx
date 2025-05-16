@@ -36,7 +36,7 @@ export function ZoomSection() {
       <div className="grid md:grid-cols-5 gap-10 items-center">
         <div className="md:col-span-2 relative h-80 md:h-[400px] rounded-lg overflow-hidden shadow-xl order-last md:order-first">
             <Image
-                src="https://placehold.co/600x800.png"
+                src="/images/trish2.jpeg"
                 alt="Mornings with Trish"
                 layout="fill"
                 objectFit="cover"
