@@ -144,14 +144,16 @@ export function ChatWidget() {
 
   return (
     <>
-      <Button
-        onClick={() => handleSheetOpenChange(true)}
-        className="fixed bottom-6 left-6 rounded-full w-16 h-16 shadow-xl hover:shadow-2xl transition-shadow bg-primary hover:bg-primary/90 z-[60]"
-        size="icon"
-        aria-label="Open chat with Trish"
-      >
-        <Sparkles className="h-8 w-8 text-primary-foreground" />
-      </Button>
+      {!isOpen && (
+        <Button
+          onClick={() => handleSheetOpenChange(true)}
+          className="fixed bottom-6 right-6 rounded-full w-16 h-16 shadow-xl hover:shadow-2xl transition-shadow bg-primary hover:bg-primary/90 z-[60]"
+          size="icon"
+          aria-label="Open chat with Trish"
+        >
+          <Sparkles className="h-8 w-8 text-primary-foreground" />
+        </Button>
+      )}
 
       <Sheet open={isOpen} onOpenChange={handleSheetOpenChange}>
         <SheetContent side="right" className="w-full sm:max-w-md flex flex-col p-0">
