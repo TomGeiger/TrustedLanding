@@ -36,7 +36,7 @@ export function IULSection() {
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 items-start">
         <div className="lg:col-span-1 relative h-80 md:h-full rounded-lg overflow-hidden shadow-xl">
           <Image
-            src="/images/iul.png"
+            src="/images/iul2.png"
             alt="IUL Chart"
             layout="fill"
             objectFit="cover"
