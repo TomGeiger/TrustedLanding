@@ -1,7 +1,8 @@
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { SectionWrapper } from '@/components/landing/section-wrapper';
-import { Phone, Mail, MapPin } from 'lucide-react';
+import { Phone, Mail, MapPin, CalendarCheck } from 'lucide-react';
 
 const contactDetails = [
   {
@@ -34,6 +35,9 @@ export function ContactSection() {
         <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
           Ready to take the next step towards a secure financial future? Contact us today for a personalized consultation.
         </p>
+        <h3 className="mt-6 text-xl md:text-2xl font-semibold text-foreground">
+          Contact Trusted Future Today!
+        </h3>
       </div>
       
       <Card className="max-w-3xl mx-auto shadow-xl bg-card">
@@ -64,6 +68,15 @@ export function ContactSection() {
                 Send us an Email <Mail className="ml-2 h-5 w-5" />
               </a>
             </Button>
+            <div className="mt-4">
+              <a 
+                href="mailto:pgeiger.iul@gmail.com?subject=Consultation%20Request" 
+                className="inline-flex items-center text-sm text-accent hover:underline hover:text-accent/80 transition-colors"
+              >
+                <CalendarCheck className="mr-2 h-4 w-4" />
+                Schedule a Consultation
+              </a>
+            </div>
           </div>
         </CardContent>
       </Card>
