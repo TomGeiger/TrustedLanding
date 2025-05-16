@@ -82,10 +82,14 @@ const aiChatFlow = ai.defineFlow(
       }
     });
     
-    // Improved error/empty response handling
-    if (!output?.text) {
-        const finishReason = output?.candidates?.[0]?.finishReason;
-        const safetyRatings = output?.candidates?.[0]?.safetyRatings;
+    if (!output) {
+        console.error('AI generation returned a null or undefined output object.');
+        return { response: "I'm sorry, the AI service returned an unexpected empty result. Please try again." };
+    }
+    
+    if (!output.text) {
+        const finishReason = output.candidates?.[0]?.finishReason;
+        const safetyRatings = output.candidates?.[0]?.safetyRatings;
 
         if (finishReason === 'SAFETY') {
              console.warn('AI response blocked due to safety settings. Ratings:', safetyRatings);
@@ -98,7 +102,7 @@ const aiChatFlow = ai.defineFlow(
         console.error('AI did not return text. Finish reason:', finishReason, 'Output:', output);
         return { response: "I'm sorry, I encountered an issue generating a response. Could you please rephrase or try again?" };
     }
-    return { response: output.text! };
+    return { response: output.text };
   }
 );
 
