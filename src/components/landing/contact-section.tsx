@@ -62,21 +62,13 @@ export function ContactSection() {
               </div>
             </div>
           ))}
-          <div className="pt-4 text-center">
-            <Button size="lg" className="shadow-md hover:shadow-lg transition-shadow" asChild>
-              <a href="mailto:pgeiger.iul@gmail.com">
-                Send us an Email <Mail className="ml-2 h-5 w-5" />
-              </a>
-            </Button>
-            <div className="mt-4">
-              <a 
-                href="mailto:pgeiger.iul@gmail.com?subject=Consultation%20Request" 
-                className="inline-flex items-center text-sm text-accent hover:underline hover:text-accent/80 transition-colors"
-              >
-                <CalendarCheck className="mr-2 h-4 w-4" />
+          <div className="pt-6 text-center">
+            <Button size="lg" className="shadow-md hover:shadow-lg transition-shadow w-full sm:w-auto" asChild>
+              <a href="mailto:pgeiger.iul@gmail.com?subject=Consultation%20Request">
+                <CalendarCheck className="mr-2 h-5 w-5" />
                 Schedule a Consultation
               </a>
-            </div>
+            </Button>
           </div>
         </CardContent>
       </Card>
