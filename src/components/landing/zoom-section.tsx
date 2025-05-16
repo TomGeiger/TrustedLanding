@@ -1,11 +1,34 @@
 
+'use client';
+
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { SectionWrapper } from '@/components/landing/section-wrapper';
-import { CalendarDays, Video, Coffee, Hourglass } from 'lucide-react';
+import { CalendarDays, Video, Coffee, Hourglass, Sparkles } from 'lucide-react';
 import Image from 'next/image';
 
+const motivationalQuotes = [
+  "The secret of getting ahead is getting started.",
+  "Don't watch the clock; do what it does. Keep going.",
+  "The only way to do great work is to love what you do.",
+  "Your limitation—it's only your imagination.",
+  "Push yourself, because no one else is going to do it for you.",
+  "Great things never come from comfort zones.",
+  "Dream it. Wish it. Do it.",
+  "Success doesn’t just find you. You have to go out and get it.",
+  "The harder you work for something, the greater you’ll feel when you achieve it.",
+  "Dream bigger. Do bigger."
+];
+
 export function ZoomSection() {
+  const [quote, setQuote] = useState('');
+
+  useEffect(() => {
+    const randomIndex = Math.floor(Math.random() * motivationalQuotes.length);
+    setQuote(motivationalQuotes[randomIndex]);
+  }, []);
+
   return (
     <SectionWrapper id="kickstart" className="bg-primary/5">
       <div className="grid md:grid-cols-5 gap-10 items-center">
@@ -34,6 +57,13 @@ export function ZoomSection() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
+              {quote && (
+                <div className="mt-0 mb-6 p-4 border-l-4 border-accent bg-accent/10 rounded-r-md">
+                  <p className="italic text-accent-foreground/90 text-center md:text-left">
+                    &ldquo;{quote}&rdquo;
+                  </p>
+                </div>
+              )}
               <div className="flex items-start gap-4">
                 <CalendarDays className="h-7 w-7 text-primary mt-1 flex-shrink-0" />
                 <div>
