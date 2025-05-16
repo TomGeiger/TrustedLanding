@@ -59,7 +59,7 @@ export function ZoomSection() {
             </CardHeader>
             <CardContent className="space-y-6">
               {quote && (
-                <div className="mt-0 mb-6 p-4 border-l-4 border-accent bg-accent/10 rounded-r-md">
+                <div className="mt-0 mb-6 p-4 border-l-4 border-accent bg-accent/20 rounded-r-md"> {/* Changed bg-accent/10 to bg-accent/20 */}
                   <p className="italic text-accent/90 text-center md:text-left">
                     &ldquo;{quote}&rdquo;
                   </p>
