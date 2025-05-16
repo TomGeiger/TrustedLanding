@@ -55,21 +55,23 @@ export function ChatWidget() {
   const handleAiMessageSend = async () => {
     if (!currentMessage.trim()) return;
 
-    const newUserMessage: ChatMessage = { id: Date.now().toString(), sender: 'user', text: currentMessage.trim() };
+    const userMessageText = currentMessage.trim();
+    const newUserMessage: ChatMessage = { id: Date.now().toString(), sender: 'user', text: userMessageText };
+    
+    // Optimistically update UI with user's message
     setConversation(prev => [...prev, newUserMessage]);
     setCurrentMessage('');
     setIsAiLoading(true);
 
+    // Prepare history for the API: it should be the conversation *before* the newUserMessage
+    // The `conversation` state at this point (before the setConversation call fully resolves for the API)
+    // represents the history *prior* to the current user's message.
     const historyForApi = conversation.map(msg => ({
         sender: msg.sender,
         text: msg.text,
     }));
     
-    // Add the latest user message to history for the API call
-    historyForApi.push({ sender: 'user', text: newUserMessage.text});
-
-
-    const result = await aiChatAction({ message: newUserMessage.text, history: historyForApi });
+    const result = await aiChatAction({ message: userMessageText, history: historyForApi });
 
     if (result.success && result.response) {
       const aiResponse: ChatMessage = { id: (Date.now() + 1).toString(), sender: 'ai', text: result.response };
