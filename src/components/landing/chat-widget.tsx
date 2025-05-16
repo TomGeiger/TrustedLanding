@@ -146,7 +146,7 @@ export function ChatWidget() {
     <>
       <Button
         onClick={() => handleSheetOpenChange(true)}
-        className="fixed bottom-6 right-6 rounded-full w-16 h-16 shadow-xl hover:shadow-2xl transition-shadow bg-primary hover:bg-primary/90 z-[60]"
+        className="fixed bottom-6 left-6 rounded-full w-16 h-16 shadow-xl hover:shadow-2xl transition-shadow bg-primary hover:bg-primary/90 z-[60]"
         size="icon"
         aria-label="Open chat with Trish"
       >
