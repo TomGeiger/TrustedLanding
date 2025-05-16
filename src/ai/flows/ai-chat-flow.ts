@@ -54,14 +54,14 @@ const aiChatFlow = ai.defineFlow(
     outputSchema: AiChatOutputSchema,
   },
   async (input) => { // input contains { message: string, history?: AiChatHistoryItem[] }
-    const {output} = await ai.generate({
-      prompt: chatPrompt,         // The template string including system prompt and current message placeholder
-      history: input.history || [], // The conversation history *before* the current user's message
-      input: {                   // Data for populating placeholders in `chatPrompt`
-        message: input.message,  // The current user's message
+    const generationResult = await ai.generate({ // The result of ai.generate() is the response object itself
+      prompt: chatPrompt,
+      history: input.history || [],
+      input: { 
+        message: input.message,
       },
       config: {
-        safetySettings: [ // Added safety settings
+        safetySettings: [
           {
             category: 'HARM_CATEGORY_HARASSMENT',
             threshold: 'BLOCK_MEDIUM_AND_ABOVE',
@@ -82,14 +82,18 @@ const aiChatFlow = ai.defineFlow(
       }
     });
     
-    if (!output) {
-        console.error('AI generation returned a null or undefined output object.');
+    // Log the entire result from ai.generate() for debugging
+    console.log('Raw AI Generation Result:', JSON.stringify(generationResult, null, 2));
+
+    if (!generationResult) {
+        console.error('AI generation returned a null or undefined result object entirely.');
         return { response: "I'm sorry, the AI service returned an unexpected empty result. Please try again." };
     }
     
-    if (!output.text) {
-        const finishReason = output.candidates?.[0]?.finishReason;
-        const safetyRatings = output.candidates?.[0]?.safetyRatings;
+    // Check for the 'text' property directly on the generationResult
+    if (!generationResult.text) {
+        const finishReason = generationResult.candidates?.[0]?.finishReason;
+        const safetyRatings = generationResult.candidates?.[0]?.safetyRatings;
 
         if (finishReason === 'SAFETY') {
              console.warn('AI response blocked due to safety settings. Ratings:', safetyRatings);
@@ -99,10 +103,9 @@ const aiChatFlow = ai.defineFlow(
             console.warn('AI response truncated due to max tokens.');
             return { response: "My response was a bit long and got cut short. Could you ask a more specific question, or perhaps break it down?" };
         }
-        console.error('AI did not return text. Finish reason:', finishReason, 'Output:', output);
+        console.error('AI did not return text. Finish reason:', finishReason, 'Full generation result:', JSON.stringify(generationResult, null, 2));
         return { response: "I'm sorry, I encountered an issue generating a response. Could you please rephrase or try again?" };
     }
-    return { response: output.text };
+    return { response: generationResult.text }; // Use generationResult.text
   }
 );
-
