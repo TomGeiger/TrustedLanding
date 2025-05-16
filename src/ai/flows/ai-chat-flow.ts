@@ -61,7 +61,7 @@ const aiChatFlow = ai.defineFlow(
         message: input.message,  // The current user's message
       },
       config: {
-        safetySettings: [
+        safetySettings: [ // Added safety settings
           {
             category: 'HARM_CATEGORY_HARASSMENT',
             threshold: 'BLOCK_MEDIUM_AND_ABOVE',
@@ -70,19 +70,35 @@ const aiChatFlow = ai.defineFlow(
             category: 'HARM_CATEGORY_HATE_SPEECH',
             threshold: 'BLOCK_MEDIUM_AND_ABOVE',
           },
+           {
+            category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
+            threshold: 'BLOCK_MEDIUM_AND_ABOVE',
+          },
+           {
+            category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
+            threshold: 'BLOCK_MEDIUM_AND_ABOVE',
+          }
         ],
       }
     });
     
+    // Improved error/empty response handling
     if (!output?.text) {
-        const safetyFeedback = output?.candidates?.[0]?.finishReason;
-        if (safetyFeedback === 'SAFETY') {
-             return { response: "I'm sorry, I can't respond to that. Can I help with something else related to your financial goals?" };
+        const finishReason = output?.candidates?.[0]?.finishReason;
+        const safetyRatings = output?.candidates?.[0]?.safetyRatings;
+
+        if (finishReason === 'SAFETY') {
+             console.warn('AI response blocked due to safety settings. Ratings:', safetyRatings);
+             return { response: "I'm sorry, I can't respond to that as it may have triggered a safety guideline. Can I help with something else related to your financial goals?" };
         }
-        return { response: "I'm sorry, I encountered an issue. Could you please rephrase or try again?" };
+         if (finishReason === 'MAX_TOKENS') {
+            console.warn('AI response truncated due to max tokens.');
+            return { response: "My response was a bit long and got cut short. Could you ask a more specific question, or perhaps break it down?" };
+        }
+        console.error('AI did not return text. Finish reason:', finishReason, 'Output:', output);
+        return { response: "I'm sorry, I encountered an issue generating a response. Could you please rephrase or try again?" };
     }
     return { response: output.text! };
   }
 );
 
-// Removed Handlebars import and custom helper as they are no longer needed with the simplified prompt.

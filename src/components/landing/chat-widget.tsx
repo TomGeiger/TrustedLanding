@@ -15,7 +15,13 @@ import {
   SheetDescription,
   SheetFooter,
 } from '@/components/ui/sheet';
-import { MessageSquare, Send, User, Mail, Phone, CheckCircle, Bot, Sparkles, FileText } from 'lucide-react';
+import { 
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion"; // Added Accordion imports
+import { MessageSquare, Send, User, Mail, Phone, CheckCircle, Bot, Sparkles, FileText, ChevronDown } from 'lucide-react';
 import { sendChatInquiry, type ChatInquiryInput } from '@/app/actions/send-chat-inquiry';
 import { aiChatAction, type AiClientChatInput } from '@/app/actions/ai-chat-action';
 import { useToast } from "@/hooks/use-toast";
@@ -36,7 +42,7 @@ export function ChatWidget() {
   const [isAiLoading, setIsAiLoading] = useState(false);
 
   // Inquiry Form state
-  const [inquiryQuestion, setInquiryQuestion] = useState(''); // Renamed from 'question' to avoid conflict
+  const [inquiryQuestion, setInquiryQuestion] = useState('');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -58,15 +64,12 @@ export function ChatWidget() {
     const userMessageText = currentMessage.trim();
     const newUserMessage: ChatMessage = { id: Date.now().toString(), sender: 'user', text: userMessageText };
     
-    // Optimistically update UI with user's message
-    setConversation(prev => [...prev, newUserMessage]);
+    const currentConversation = [...conversation, newUserMessage];
+    setConversation(currentConversation);
     setCurrentMessage('');
     setIsAiLoading(true);
 
-    // Prepare history for the API: it should be the conversation *before* the newUserMessage
-    // The `conversation` state at this point (before the setConversation call fully resolves for the API)
-    // represents the history *prior* to the current user's message.
-    const historyForApi = conversation.map(msg => ({
+    const historyForApi = conversation.map(msg => ({ // Use `conversation` state before adding newUserMessage
         sender: msg.sender,
         text: msg.text,
     }));
@@ -82,7 +85,7 @@ export function ChatWidget() {
         description: result.errorMessage || "Could not get a response from AI.",
         variant: "destructive",
       });
-       const aiErrorResponse: ChatMessage = { id: (Date.now() + 1).toString(), sender: 'ai', text: "Sorry, I'm having trouble connecting right now. Please try again in a moment." };
+       const aiErrorResponse: ChatMessage = { id: (Date.now() + 1).toString(), sender: 'ai', text: result.errorMessage || "Sorry, I'm having trouble connecting right now. Please try again in a moment." };
       setConversation(prev => [...prev, aiErrorResponse]);
     }
     setIsAiLoading(false);
@@ -102,7 +105,8 @@ export function ChatWidget() {
         description: "Trish or her team will get back to you soon.",
         variant: "default",
       });
-      setInquiryQuestion('');
+      // Clear form fields only, keep inquiryQuestion for context if they re-open form
+      // setInquiryQuestion(''); 
       setName('');
       setEmail('');
       setPhone('');
@@ -119,13 +123,21 @@ export function ChatWidget() {
   const handleSheetOpenChange = (open: boolean) => {
     setIsOpen(open);
     if (!open) {
-      setIsInquirySubmitted(false);
-      // Optionally reset conversation if sheet is closed? For now, let's persist it.
-      // setConversation([]); 
+      // When closing, reset inquiry submitted state so form shows next time
+      setIsInquirySubmitted(false); 
     } else {
-      // Greet with AI when sheet opens if conversation is empty
-      if (conversation.length === 0) {
-        setConversation([{id: 'initial-ai-greeting', sender: 'ai', text: "Hi, I'm Trish, your AI assistant! How can I help you with your financial questions today?"}]);
+      if (conversation.length === 0 && !isAiLoading) {
+         setIsAiLoading(true);
+         // Use a small timeout to ensure sheet is visually open before AI "typing"
+         setTimeout(async () => {
+            const initialGreetingResult = await aiChatAction({message: "Hello", history: []});
+            if (initialGreetingResult.success && initialGreetingResult.response) {
+                 setConversation([{id: 'initial-ai-greeting', sender: 'ai', text: initialGreetingResult.response}]);
+            } else {
+                 setConversation([{id: 'initial-ai-greeting-fallback', sender: 'ai', text: "Hi, I'm Trish, your AI assistant! How can I help you with your financial questions today?"}]);
+            }
+            setIsAiLoading(false);
+        }, 100);
       }
     }
   };
@@ -149,7 +161,7 @@ export function ChatWidget() {
               Chat with AI Trish
             </SheetTitle>
             <SheetDescription className="text-sm">
-              Ask your questions, or fill the form below for a direct consultation.
+              Ask your questions below. For direct consultations, expand the form.
             </SheetDescription>
           </SheetHeader>
 
@@ -172,7 +184,16 @@ export function ChatWidget() {
                 </div>
               </div>
             ))}
-            {isAiLoading && (
+            {isAiLoading && conversation.length === 0 && ( // Show loading for initial greeting
+                 <div className="flex justify-start mb-3">
+                    <div className="bg-muted text-foreground p-3 rounded-lg shadow rounded-bl-none">
+                        <p className="text-sm flex items-center">
+                            <Sparkles className="h-4 w-4 mr-2 animate-pulse" /> AI Trish is typing...
+                        </p>
+                    </div>
+                </div>
+            )}
+             {isAiLoading && conversation.length > 0 && ( // Show thinking for subsequent messages
                  <div className="flex justify-start mb-3">
                     <div className="bg-muted text-foreground p-3 rounded-lg shadow rounded-bl-none">
                         <p className="text-sm flex items-center">
@@ -199,80 +220,89 @@ export function ChatWidget() {
               </Button>
             </div>
           </div>
-
-          {isInquirySubmitted ? (
-            <div className="flex flex-col items-center justify-center p-6 text-center border-t">
-              <CheckCircle className="h-16 w-16 text-green-500 mb-4" />
-              <h3 className="text-xl font-semibold mb-2 text-foreground">Inquiry Sent!</h3>
-              <p className="text-muted-foreground mb-6">
-                Thank you for your message. Trish or her team will get back to you soon.
-              </p>
-              <Button onClick={() => setIsInquirySubmitted(false)} variant="outline">
-                Ask Another Question or Start New Inquiry
-              </Button>
-            </div>
-          ) : (
-            <form onSubmit={handleInquirySubmit} className="space-y-3 px-6 py-4 border-t">
-               <Label className="flex items-center text-sm font-medium text-muted-foreground">
-                  <FileText className="h-4 w-4 mr-2 text-primary" />
-                  Or, request a consultation:
-                </Label>
-              <div>
-                <Label htmlFor="chat-question-inquiry" className="flex items-center mb-1.5 text-xs font-medium">
-                  Your Question/Interest
-                </Label>
-                <Textarea
-                  id="chat-question-inquiry"
-                  value={inquiryQuestion}
-                  onChange={(e) => setInquiryQuestion(e.target.value)}
-                  placeholder="e.g., Interested in IUL options"
-                  rows={3}
-                  required
-                  className="resize-none text-sm"
-                />
-              </div>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div>
-                  <Label htmlFor="chat-name" className="flex items-center mb-1.5 text-xs font-medium">
-                    <User className="h-3 w-3 mr-1 text-primary" /> Name
-                  </Label>
-                  <Input id="chat-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Full Name" required className="text-sm" />
+          
+          <Accordion type="single" collapsible className="w-full border-t">
+            <AccordionItem value="consultation-form" className="border-b-0">
+              <AccordionTrigger className="px-6 py-3 text-sm hover:no-underline text-muted-foreground hover:text-primary [&[data-state=open]>svg]:text-primary">
+                <div className="flex items-center">
+                  <FileText className="h-4 w-4 mr-2" />
+                  Or, Request a Consultation
                 </div>
-                <div>
-                  <Label htmlFor="chat-email" className="flex items-center mb-1.5 text-xs font-medium">
-                    <Mail className="h-3 w-3 mr-1 text-primary" /> Email
-                  </Label>
-                  <Input id="chat-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" required className="text-sm" />
-                </div>
-              </div>
-              <div>
-                  <Label htmlFor="chat-phone" className="flex items-center mb-1.5 text-xs font-medium">
-                    <Phone className="h-3 w-3 mr-1 text-primary" /> Phone <span className="text-xs text-muted-foreground ml-1">(Optional)</span>
-                  </Label>
-                  <Input id="chat-phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="(555) 123-4567" className="text-sm" />
-              </div>
-              <SheetFooter className="pt-3 pb-1 sticky bottom-0 bg-background">
-                <Button type="submit" className="w-full" disabled={isInquiryLoading}>
-                  {isInquiryLoading ? (
-                    <>
-                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Submitting Inquiry...
-                    </>
-                  ) : (
-                    <>
-                      <Send className="mr-2 h-5 w-5" />
-                      Submit Formal Inquiry
-                    </>
-                  )}
-                </Button>
-              </SheetFooter>
-            </form>
-          )}
+              </AccordionTrigger>
+              <AccordionContent className="px-6 pb-4">
+                {isInquirySubmitted ? (
+                  <div className="flex flex-col items-center justify-center pt-4 text-center">
+                    <CheckCircle className="h-12 w-12 text-green-500 mb-3" />
+                    <h3 className="text-lg font-semibold mb-1 text-foreground">Inquiry Sent!</h3>
+                    <p className="text-muted-foreground mb-4 text-sm">
+                      Thank you! Trish or her team will get back to you soon.
+                    </p>
+                    <Button onClick={() => setIsInquirySubmitted(false)} variant="outline" size="sm">
+                      Start New Inquiry
+                    </Button>
+                  </div>
+                ) : (
+                  <form onSubmit={handleInquirySubmit} className="space-y-3 pt-2">
+                    <div>
+                      <Label htmlFor="chat-question-inquiry" className="flex items-center mb-1.5 text-xs font-medium">
+                        Your Question/Interest
+                      </Label>
+                      <Textarea
+                        id="chat-question-inquiry"
+                        value={inquiryQuestion}
+                        onChange={(e) => setInquiryQuestion(e.target.value)}
+                        placeholder="e.g., Interested in IUL options"
+                        rows={3}
+                        required
+                        className="resize-none text-sm"
+                      />
+                    </div>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <div>
+                        <Label htmlFor="chat-name" className="flex items-center mb-1.5 text-xs font-medium">
+                          <User className="h-3 w-3 mr-1 text-primary" /> Name
+                        </Label>
+                        <Input id="chat-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Full Name" required className="text-sm" />
+                      </div>
+                      <div>
+                        <Label htmlFor="chat-email" className="flex items-center mb-1.5 text-xs font-medium">
+                          <Mail className="h-3 w-3 mr-1 text-primary" /> Email
+                        </Label>
+                        <Input id="chat-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" required className="text-sm" />
+                      </div>
+                    </div>
+                    <div>
+                        <Label htmlFor="chat-phone" className="flex items-center mb-1.5 text-xs font-medium">
+                          <Phone className="h-3 w-3 mr-1 text-primary" /> Phone <span className="text-xs text-muted-foreground ml-1">(Optional)</span>
+                        </Label>
+                        <Input id="chat-phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="(555) 123-4567" className="text-sm" />
+                    </div>
+                    <SheetFooter className="pt-3 pb-1 !mt-4 sticky bottom-0 bg-background">
+                      <Button type="submit" className="w-full" disabled={isInquiryLoading}>
+                        {isInquiryLoading ? (
+                          <>
+                            <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Submitting Inquiry...
+                          </>
+                        ) : (
+                          <>
+                            <Send className="mr-2 h-5 w-5" />
+                            Submit Formal Inquiry
+                          </>
+                        )}
+                      </Button>
+                    </SheetFooter>
+                  </form>
+                )}
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
         </SheetContent>
       </Sheet>
     </>
   );
 }
+
