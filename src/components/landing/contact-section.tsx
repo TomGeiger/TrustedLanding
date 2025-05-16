@@ -1,0 +1,72 @@
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { SectionWrapper } from '@/components/landing/section-wrapper';
+import { Phone, Mail, MapPin } from 'lucide-react';
+
+const contactDetails = [
+  {
+    icon: <Phone className="h-6 w-6 text-primary" />,
+    title: "Phone",
+    value: "(555) 123-4567",
+    href: "tel:5551234567",
+  },
+  {
+    icon: <Mail className="h-6 w-6 text-primary" />,
+    title: "Email",
+    value: "info@trustedfuture.com",
+    href: "mailto:info@trustedfuture.com",
+  },
+  {
+    icon: <MapPin className="h-6 w-6 text-primary" />,
+    title: "Office (By Appointment)",
+    value: "123 Future Lane, Suite 100, Financial District, Your City",
+    href: "#", // Placeholder for map link
+  },
+];
+
+export function ContactSection() {
+  return (
+    <SectionWrapper id="contact" className="bg-background">
+      <div className="text-center mb-12">
+        <h2 className="text-3xl md:text-4xl font-bold text-primary">
+          Get in Touch
+        </h2>
+        <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
+          Ready to take the next step towards a secure financial future? Contact us today for a personalized consultation.
+        </p>
+      </div>
+      
+      <Card className="max-w-3xl mx-auto shadow-xl bg-card">
+        <CardHeader>
+          <CardTitle className="text-2xl text-center text-primary">Contact Information</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {contactDetails.map((detail, index) => (
+            <div key={index} className="flex items-start gap-4">
+              <div className="p-2 bg-primary/10 rounded-md mt-1">
+                {detail.icon}
+              </div>
+              <div>
+                <h4 className="font-semibold text-lg text-foreground">{detail.title}</h4>
+                {detail.href !== "#" ? (
+                   <a href={detail.href} className="text-accent hover:underline hover:text-accent/80 transition-colors">
+                    {detail.value}
+                   </a>
+                ) : (
+                  <p className="text-muted-foreground">{detail.value}</p>
+                )}
+              </div>
+            </div>
+          ))}
+          <div className="pt-4 text-center">
+            <Button size="lg" className="shadow-md hover:shadow-lg transition-shadow" asChild>
+              <a href="mailto:info@trustedfuture.com">
+                Send us an Email <Mail className="ml-2 h-5 w-5" />
+              </a>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </SectionWrapper>
+  );
+}
