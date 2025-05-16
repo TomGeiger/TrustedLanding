@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { SectionWrapper } from '@/components/landing/section-wrapper';
-import { CalendarDays, Video, Coffee, Hourglass, Sparkles } from 'lucide-react';
+import { CalendarDays, Video, Coffee, Hourglass } from 'lucide-react';
 import Image from 'next/image';
 
 const motivationalQuotes = [
@@ -25,16 +25,17 @@ export function ZoomSection() {
   const [quote, setQuote] = useState('');
 
   useEffect(() => {
+    // This will only run on the client, after initial hydration
     const randomIndex = Math.floor(Math.random() * motivationalQuotes.length);
     setQuote(motivationalQuotes[randomIndex]);
-  }, []);
+  }, []); // Empty dependency array ensures this runs once on mount
 
   return (
     <SectionWrapper id="kickstart" className="bg-primary/5">
       <div className="grid md:grid-cols-5 gap-10 items-center">
         <div className="md:col-span-2 relative h-80 md:h-[400px] rounded-lg overflow-hidden shadow-xl order-last md:order-first">
             <Image
-                src="/images/trish2.jpeg"
+                src="https://placehold.co/600x800.png"
                 alt="Mornings with Trish"
                 layout="fill"
                 objectFit="cover"
@@ -59,7 +60,7 @@ export function ZoomSection() {
             <CardContent className="space-y-6">
               {quote && (
                 <div className="mt-0 mb-6 p-4 border-l-4 border-accent bg-accent/10 rounded-r-md">
-                  <p className="italic text-accent-foreground/90 text-center md:text-left">
+                  <p className="italic text-accent/90 text-center md:text-left">
                     &ldquo;{quote}&rdquo;
                   </p>
                 </div>
