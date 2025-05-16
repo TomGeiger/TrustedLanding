@@ -27,7 +27,7 @@ export function HeroSection() {
         </div>
         <div className="relative h-64 md:h-96 lg:h-[450px] rounded-lg overflow-hidden shadow-2xl">
           <Image
-            src="/images/hero-banner-financial-planning.jpg" // Updated to a local image path
+            src="/images/diverse-group.jpg" // Updated to a local image path
             alt="A diverse group of people discussing financial plans around a table."
             layout="fill"
             objectFit="cover"

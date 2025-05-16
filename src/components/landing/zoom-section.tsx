@@ -10,8 +10,8 @@ export function ZoomSection() {
       <div className="grid md:grid-cols-5 gap-10 items-center">
         <div className="md:col-span-2 relative h-80 md:h-[400px] rounded-lg overflow-hidden shadow-xl order-last md:order-first">
             <Image
-                src="https://placehold.co/400x400.png"
-                alt="Trish's Morning Kickstart"
+                src="/images/trish2.jpeg"
+                alt="Mornings with Trish"
                 layout="fill"
                 objectFit="cover"
                 data-ai-hint="motivational speaker online"
@@ -25,7 +25,7 @@ export function ZoomSection() {
               <div className="inline-flex items-center justify-center md:justify-start gap-2 mb-2 text-accent">
                 <Coffee className="h-8 w-8" />
                 <CardTitle className="text-3xl md:text-4xl font-bold text-accent">
-                    Trish's Morning Kickstart
+                    Mornings with Trish
                 </CardTitle>
               </div>
               <CardDescription className="text-lg text-muted-foreground">

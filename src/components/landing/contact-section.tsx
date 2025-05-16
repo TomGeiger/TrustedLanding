@@ -60,7 +60,7 @@ export function ContactSection() {
           ))}
           <div className="pt-4 text-center">
             <Button size="lg" className="shadow-md hover:shadow-lg transition-shadow" asChild>
-              <a href="mailto:info@trustedfuture.com">
+              <a href="mailto:pgeiger.iul@gmail.com">
                 Send us an Email <Mail className="ml-2 h-5 w-5" />
               </a>
             </Button>
