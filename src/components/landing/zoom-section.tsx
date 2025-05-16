@@ -36,7 +36,7 @@ export function ZoomSection() {
       <div className="grid md:grid-cols-5 gap-10 items-center">
         <div className="md:col-span-2 relative h-80 md:h-[400px] rounded-lg overflow-hidden shadow-xl order-last md:order-first">
             <Image
-                src="/images/trish2.jpeg"
+                src="https://placehold.co/600x800.png"
                 alt="Mornings with Trish"
                 layout="fill"
                 objectFit="cover"
@@ -57,8 +57,11 @@ export function ZoomSection() {
               <CardDescription className="text-lg text-muted-foreground">
                 Get ready! Trish will soon be hosting daily sessions for a dose of motivation and financial wisdom to start your day right! <strong className="text-primary">Coming Soon!</strong>
               </CardDescription>
-              <p className="text-sm text-muted-foreground mt-2 text-center md:text-left">
-                Curious about the host? <Link href="/about-trish" className="font-medium text-primary hover:underline">Meet Patricia &ldquo;Trish&rdquo; Geiger</Link>.
+              <p className="text-base text-muted-foreground mt-3 text-center md:text-left">
+                Curious about the host?{' '}
+                <Link href="/about-trish" className="font-semibold text-primary hover:underline hover:text-primary/80 transition-colors">
+                  Meet Patricia &ldquo;Trish&rdquo; Geiger
+                </Link>.
               </p>
             </CardHeader>
             <CardContent className="space-y-6">
