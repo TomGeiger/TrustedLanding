@@ -29,6 +29,19 @@ const AiChatOutputSchema = z.object({
 });
 export type AiChatOutput = z.infer<typeof AiChatOutputSchema>;
 
+const financialMotivationalQuotes = [
+  "The best time to plant a tree was 20 years ago. The second best time is now.",
+  "An investment in knowledge pays the best interest.",
+  "Financial freedom is available to those who learn about it and work for it.",
+  "It's not how much money you make, but how much money you keep, how hard it works for you, and how many generations you keep it for.",
+  "The secret of getting ahead is getting started.",
+  "Do not save what is left after spending, but spend what is left after saving.",
+  "Your economic security does not lie in your job; it lies in your own power to produce - to think, to learn, to create, to adapt.",
+  "A budget is telling your money where to go instead of wondering where it went.",
+  "Success is not final, failure is not fatal: It is the courage to continue that counts.",
+  "The only limit to our realization of tomorrow will be our doubts of today."
+];
+
 export async function conversationalAiChat(input: AiChatInput): Promise<AiChatOutput> {
   return aiChatFlow(input);
 }
@@ -40,6 +53,8 @@ IMPORTANT:
 - If the conversation history IS empty, your very first message to the user must start with "Hello, I'm Trish, your own AI Financial Genius!" and then you can continue to warmly ask how you can assist them with their financial questions today.
 
 Keep your responses helpful, clear, and concise. Maintain a positive, supportive, and encouraging tone.
+
+When appropriate and it feels natural, you can offer a piece of financial wisdom or a motivational thought. For this interaction, consider reflecting on the following idea: "__RANDOM_QUOTE__". You don't have to use it, but it's there if it fits the conversation.
 
 If a user asks a question you cannot answer or that is outside the scope of financial advice or your expertise (e.g., medical advice, personal opinions on unrelated topics), politely state that you cannot help with that specific query and try to redirect them to relevant financial topics if appropriate.
 
@@ -56,7 +71,9 @@ const aiChatFlow = ai.defineFlow(
   },
   async (input) => { // input contains { message: string, history?: AiChatHistoryItem[] }
     
-    const finalPrompt = chatPromptTemplateString.replace('__USER_MESSAGE__', input.message);
+    const randomQuote = financialMotivationalQuotes[Math.floor(Math.random() * financialMotivationalQuotes.length)];
+    let finalPrompt = chatPromptTemplateString.replace('__USER_MESSAGE__', input.message);
+    finalPrompt = finalPrompt.replace('__RANDOM_QUOTE__', randomQuote);
 
     const generationResult = await ai.generate({
       prompt: finalPrompt,
