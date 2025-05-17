@@ -21,7 +21,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { MessageSquare, Send, User, Mail, Phone, CheckCircle, Bot, Sparkles, FileText } from 'lucide-react';
+import { MessageSquare, Send, User, Mail, Phone, CheckCircle, Bot, Sparkles, FileText, Lightbulb } from 'lucide-react';
 import { sendChatInquiry, type ChatInquiryInput } from '@/app/actions/send-chat-inquiry';
 import { aiChatAction, type AiClientChatInput } from '@/app/actions/ai-chat-action';
 import { useToast } from "@/hooks/use-toast";
@@ -33,6 +33,13 @@ interface ChatMessage {
   text: string;
   isStreaming?: boolean;
 }
+
+const samplePrompts = [
+  "What is IUL insurance?",
+  "Can you give me a financial tip?",
+  "Tell me about 'Mornings with Trish'.",
+  "How can Trusted Future help me?",
+];
 
 export function ChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
@@ -51,6 +58,8 @@ export function ChatWidget() {
   const { toast } = useToast();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const currentAiMessageIdRef = useRef<string | null>(null);
+  const [showSamplePrompts, setShowSamplePrompts] = useState(false);
+
 
   useEffect(() => {
     if (scrollAreaRef.current) {
@@ -60,6 +69,7 @@ export function ChatWidget() {
 
   const streamAiResponse = async (message: string, history: AiClientChatInput['history']) => {
     setIsAiResponding(true);
+    setShowSamplePrompts(false); // Hide sample prompts once interaction starts
     const newAiMessageId = `ai-${Date.now()}`;
     currentAiMessageIdRef.current = newAiMessageId;
 
@@ -71,18 +81,20 @@ export function ChatWidget() {
     let streamedText = '';
     try {
       console.log('[ChatWidget] Calling aiChatAction with:', { message, history });
-      const stream = await aiChatAction({ message, history });
+      const streamResult = await aiChatAction({ message, history });
 
-      console.log('[ChatWidget] aiChatAction call result (awaited, raw stream object):', stream);
-      console.log('[ChatWidget] typeof stream (awaited):', typeof stream);
+      console.log('[ChatWidget] aiChatAction call result (awaited, raw stream object):', streamResult);
+      console.log('[ChatWidget] typeof stream (awaited):', typeof streamResult);
 
-      if (!stream || typeof stream[Symbol.asyncIterator] !== 'function') {
-         console.error('[ChatWidget] CRITICAL: aiChatAction (awaited) did not return an async iterable object. Value:', stream);
+
+      if (!streamResult || typeof streamResult[Symbol.asyncIterator] !== 'function') {
+         console.error('[ChatWidget] CRITICAL: aiChatAction (awaited) did not return an async iterable object. Value:', streamResult);
          throw new Error('AI action did not return a valid stream.');
       }
       console.log('[ChatWidget] Stream (awaited) appears to be an async iterable. Starting iteration...');
 
-      for await (const chunk of stream) {
+
+      for await (const chunk of streamResult) {
         if (typeof chunk === 'string') {
           streamedText += chunk;
           setConversation(prevConv =>
@@ -101,8 +113,11 @@ export function ChatWidget() {
       console.error("[ChatWidget] Error name:", error?.name);
       console.error("[ChatWidget] Error message:", error?.message);
       console.error("[ChatWidget] Error stack:", error?.stack);
+      
+      const errorMessageText = error.message?.includes('non-iterable') 
+        ? "AI action did not return a valid stream."
+        : (error.message || "An error occurred while fetching the AI response.");
 
-      const errorMessageText = error.message || "An error occurred while fetching the AI response.";
       if (currentAiMessageIdRef.current === newAiMessageId && conversation.find(m => m.id === newAiMessageId)) {
         setConversation(prevConv =>
             prevConv.map(msg =>
@@ -112,6 +127,7 @@ export function ChatWidget() {
             )
         );
       } else {
+         // This case might happen if the placeholder itself failed to be added.
         setConversation(prev => [
             ...prev,
             { id: newAiMessageId, sender: 'ai', text: `Sorry, I encountered an issue: ${errorMessageText}`, isStreaming: false }
@@ -120,9 +136,16 @@ export function ChatWidget() {
     } finally {
       setIsAiResponding(false);
       setConversation(prevConv =>
-        prevConv.map(msg =>
-          msg.id === currentAiMessageIdRef.current ? { ...msg, isStreaming: false } : msg
-        )
+        prevConv.map(msg => {
+          if (msg.id === currentAiMessageIdRef.current) {
+            // Check if this was the initial greeting message
+            if (history && history.length === 0 && message.toLowerCase() === "hello" && msg.sender === 'ai') {
+              setShowSamplePrompts(true); // Show sample prompts after initial greeting
+            }
+            return { ...msg, isStreaming: false };
+          }
+          return msg;
+        })
       );
       currentAiMessageIdRef.current = null;
       console.log('[ChatWidget] streamAiResponse finally block executed.');
@@ -131,17 +154,19 @@ export function ChatWidget() {
 
   const handleAiMessageSend = async () => {
     if (!currentMessage.trim() || isAiResponding) return;
+    setShowSamplePrompts(false); // Hide sample prompts when user sends a message
 
     const userMessageText = currentMessage.trim();
     const newUserMessage: ChatMessage = { id: `user-${Date.now()}`, sender: 'user', text: userMessageText };
 
+    // Optimistically add user message
     const conversationForApi = [...conversation, newUserMessage];
     setConversation(conversationForApi);
     setCurrentMessage('');
 
     const historyForApi = conversationForApi
-      .filter(msg => msg.id !== newUserMessage.id)
-      .filter(msg => msg.sender === 'user' || (msg.sender === 'ai' && msg.text.trim() !== '' && !msg.isStreaming))
+      .filter(msg => msg.id !== newUserMessage.id) // Exclude the new user message itself from history
+      .filter(msg => msg.sender === 'user' || (msg.sender === 'ai' && msg.text.trim() !== '' && !msg.isStreaming)) // Valid AI messages
       .map(msg => ({
         sender: msg.sender,
         text: msg.text,
@@ -149,6 +174,15 @@ export function ChatWidget() {
 
     await streamAiResponse(userMessageText, historyForApi);
   };
+
+  const handleSamplePromptClick = (promptText: string) => {
+    setCurrentMessage(promptText);
+    // Use a timeout to ensure currentMessage state updates before handleAiMessageSend is called
+    setTimeout(() => {
+      handleAiMessageSend();
+    }, 0);
+  };
+
 
   const handleInquirySubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -169,11 +203,13 @@ export function ChatWidget() {
     setIsOpen(open);
     if (!open) {
       setIsInquirySubmitted(false);
+      setShowSamplePrompts(false); // Hide prompts when sheet closes
     } else {
-      // If opening the sheet AND it's the first time (conversation is empty) AND AI is not already responding
       if (conversation.length === 0 && !isAiResponding) {
-         // streamAiResponse will create and manage the AI message placeholder.
          await streamAiResponse("Hello", []);
+         // setShowSamplePrompts will be set to true in streamAiResponse's finally block for initial greeting
+      } else if (conversation.length === 1 && conversation[0].sender === 'ai' && !conversation[0].isStreaming) {
+        setShowSamplePrompts(true); // Show prompts if only AI greeting exists and is not streaming
       }
     }
   };
@@ -229,13 +265,36 @@ export function ChatWidget() {
               </div>
             ))}
           </ScrollArea>
+          
+          {showSamplePrompts && (
+            <div className="px-4 pt-2 pb-1 border-t bg-background/50">
+              <p className="text-xs text-muted-foreground mb-2 flex items-center"><Lightbulb className="h-3 w-3 mr-1.5"/>Try asking:</p>
+              <div className="flex flex-wrap gap-2">
+                {samplePrompts.map((prompt, index) => (
+                  <Button
+                    key={index}
+                    variant="outline"
+                    size="sm"
+                    className="text-xs h-auto py-1 px-2.5"
+                    onClick={() => handleSamplePromptClick(prompt)}
+                  >
+                    {prompt}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          )}
+
 
           <div className="px-4 pb-2 pt-2 border-t bg-background">
             <div className="flex items-center space-x-2">
               <Input
                 id="ai-chat-message"
                 value={currentMessage}
-                onChange={(e) => setCurrentMessage(e.target.value)}
+                onChange={(e) => {
+                  setCurrentMessage(e.target.value);
+                  if (e.target.value.trim() !== '') setShowSamplePrompts(false); // Hide prompts when user starts typing
+                }}
                 placeholder="Ask Trish anything..."
                 onKeyPress={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleAiMessageSend(); }}}
                 disabled={isAiResponding}
@@ -331,3 +390,4 @@ export function ChatWidget() {
     </>
   );
 }
+
