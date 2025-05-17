@@ -114,9 +114,17 @@ export function ChatWidget() {
       console.error("[ChatWidget] Error message:", error?.message);
       console.error("[ChatWidget] Error stack:", error?.stack);
       
-      const errorMessageText = error.message?.includes('non-iterable') 
-        ? "AI action did not return a valid stream."
-        : (error.message || "An error occurred while fetching the AI response.");
+      let errorMessageText = "An error occurred while fetching the AI response.";
+      if (error.message) {
+        if (error.message.includes('valid stream')) {
+            errorMessageText = "AI action did not return a valid stream.";
+        } else if (error.message.includes('non-iterable')) {
+            errorMessageText = "AI action returned a Promise that resolved to a non-iterable value.";
+        } else {
+            errorMessageText = error.message;
+        }
+      }
+
 
       if (currentAiMessageIdRef.current === newAiMessageId && conversation.find(m => m.id === newAiMessageId)) {
         setConversation(prevConv =>
@@ -158,15 +166,14 @@ export function ChatWidget() {
 
     const userMessageText = currentMessage.trim();
     const newUserMessage: ChatMessage = { id: `user-${Date.now()}`, sender: 'user', text: userMessageText };
-
-    // Optimistically add user message
+    
     const conversationForApi = [...conversation, newUserMessage];
     setConversation(conversationForApi);
     setCurrentMessage('');
 
     const historyForApi = conversationForApi
-      .filter(msg => msg.id !== newUserMessage.id) // Exclude the new user message itself from history
-      .filter(msg => msg.sender === 'user' || (msg.sender === 'ai' && msg.text.trim() !== '' && !msg.isStreaming)) // Valid AI messages
+      .filter(msg => msg.id !== newUserMessage.id) 
+      .filter(msg => msg.sender === 'user' || (msg.sender === 'ai' && msg.text.trim() !== '' && !msg.isStreaming)) 
       .map(msg => ({
         sender: msg.sender,
         text: msg.text,
@@ -205,11 +212,13 @@ export function ChatWidget() {
       setIsInquirySubmitted(false);
       setShowSamplePrompts(false); // Hide prompts when sheet closes
     } else {
+      // Only stream initial greeting if conversation is empty AND AI is not already responding
       if (conversation.length === 0 && !isAiResponding) {
          await streamAiResponse("Hello", []);
          // setShowSamplePrompts will be set to true in streamAiResponse's finally block for initial greeting
       } else if (conversation.length === 1 && conversation[0].sender === 'ai' && !conversation[0].isStreaming) {
-        setShowSamplePrompts(true); // Show prompts if only AI greeting exists and is not streaming
+        // This case covers re-opening the sheet when only the AI greeting exists and is not streaming
+        setShowSamplePrompts(true);
       }
     }
   };
