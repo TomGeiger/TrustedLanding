@@ -11,6 +11,7 @@
 import {ai} from '@/ai/genkit';
 import type {GenerateResponseChunk} from 'genkit';
 import {z} from 'genkit';
+import { getFinancialHealthTip } from '@/ai/tools/get-financial-health-tip-tool'; // Import the new tool
 
 const AiChatHistoryItemSchema = z.object({
   role: z.enum(['user', 'model']),
@@ -48,6 +49,8 @@ Keep your responses helpful, clear, and concise. Maintain a positive, supportive
 
 When appropriate and it feels natural, you can offer a piece of financial wisdom or a motivational thought. For this interaction, consider reflecting on the following idea: "__RANDOM_QUOTE__". You don't have to use it, but it's there if it fits the conversation.
 
+If a user asks for a financial tip or some general financial wisdom, use the getFinancialHealthTip tool to provide one. Incorporate the tip naturally into your response.
+
 If a user asks a question you cannot answer or that is outside the scope of financial advice or your expertise (e.g., medical advice, personal opinions on unrelated topics), politely state that you cannot help with that specific query and try to redirect them to relevant financial topics if appropriate.
 
 If the user expresses interest in a consultation, scheduling a meeting, or wants to provide their contact details, guide them to use the contact form fields (Name, Email, Phone) available in the chat window or to visit the "Contact Us" section of the website for more direct contact options. Do not ask for their personal contact information directly in the chat.
@@ -64,6 +67,7 @@ export async function* conversationalAiChat(input: AiChatInput): AsyncGenerator<
     const {stream, response: finalResponsePromise} = ai.generateStream({
       prompt: finalPrompt,
       history: input.history || [],
+      tools: [getFinancialHealthTip], // Make the tool available to the AI
       config: {
         safetySettings: [
           { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
@@ -80,9 +84,21 @@ export async function* conversationalAiChat(input: AiChatInput): AsyncGenerator<
         yield chunk.text;
         hasYieldedText = true;
       }
+      if(chunk.toolRequest){
+         console.log('[ai-chat-flow] Tool request received:', JSON.stringify(chunk.toolRequest, null, 2));
+         // For this example, we assume only one tool and it takes no input, so we call it directly.
+         // In a more complex scenario, you'd check chunk.toolRequest.name and provide appropriate input.
+         if(chunk.toolRequest.name === 'getFinancialHealthTip') {
+            const tip = await getFinancialHealthTip(chunk.toolRequest.input || {});
+            // Send the tool's output back to the AI
+            chunk.toolResponse(tip);
+         } else {
+            console.warn(`[ai-chat-flow] Unknown tool request: ${chunk.toolRequest.name}`);
+            chunk.toolResponse("Sorry, I couldn't use that tool right now."); // Or a more specific error
+         }
+      }
     }
 
-    // After streaming, check the final response for issues
     const finalResponse = await finalResponsePromise;
     const finishReason = finalResponse.candidates?.[0]?.finishReason;
     const safetyRatings = finalResponse.candidates?.[0]?.safetyRatings;
@@ -94,23 +110,21 @@ export async function* conversationalAiChat(input: AiChatInput): AsyncGenerator<
     } else if (finishReason === 'MAX_TOKENS') {
       console.warn('AI response stream truncated due to max tokens.');
       yield "\n\n[My response was a bit long and may have been cut short.]";
+    } else if (finalResponse.candidates?.[0]?.finishReason === 'TOOL_CODE_INVALID') {
+      console.warn('AI response stream ended due to invalid tool code.');
+      yield "\n\n[I encountered an issue trying to use one of my tools.]";
     } else if (finalResponse.candidates?.[0]?.finishReason !== 'STOP' && !finalResponse.text && !hasYieldedText) {
-      // Check if there was no text at all in the final aggregated response unless it was a natural stop.
       console.warn('AI stream ended without substantial text output. Finish Reason:', finishReason, 'Full response:', JSON.stringify(finalResponse, null, 2));
       if (!hasYieldedText) {
-         // If we haven't yielded any text and it's not a natural stop, it's an issue.
         yield "[Error] I encountered an issue generating a response. Please try rephrasing or try again later.";
       } else {
-        // If some text was yielded, but it still ended unexpectedly.
         yield "\n\n[I encountered an issue generating a complete response. Please try rephrasing.]";
       }
     }
 
   } catch (error) {
     console.error('Error during AI stream generation:', error);
-    // Ensure the client gets a usable error message if an error is thrown from here.
     if (error instanceof Error) {
-        // Try to yield a user-friendly message before re-throwing
         yield `[Error] An error occurred: ${error.message}. Please try again.`;
         throw error; 
     } else {
