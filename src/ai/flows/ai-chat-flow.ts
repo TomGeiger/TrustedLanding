@@ -24,10 +24,25 @@ const AiChatInputSchema = z.object({
 });
 export type AiChatInput = z.infer<typeof AiChatInputSchema>;
 
-// AiChatOutput and AiChatOutputSchema are no longer directly returned by the main streaming function,
-// but the final response from ai.generateStream would conform to a similar structure if an output schema were used in a prompt.
-// For simplicity with dynamic string prompts, we handle text streaming directly.
+// Test version - yields hardcoded strings
+export async function* conversationalAiChat(input: AiChatInput): AsyncGenerator<string, void, undefined> {
+  console.log('[TEST FLOW] conversationalAiChat called with input:', input.message);
+  try {
+    yield "Hello from test stream! ";
+    await new Promise(resolve => setTimeout(resolve, 500));
+    yield `You said: "${input.message}". `;
+    await new Promise(resolve => setTimeout(resolve, 500));
+    yield "Test stream finished.";
+    console.log('[TEST FLOW] conversationalAiChat finished.');
+    return;
+  } catch (error) {
+    console.error('[TEST FLOW] Error in test conversationalAiChat:', error);
+    throw error; // Re-throw original error
+  }
+}
 
+/*
+// Original conversationalAiChat implementation:
 const financialMotivationalQuotes = [
   "The best time to plant a tree was 20 years ago. The second best time is now.",
   "An investment in knowledge pays the best interest.",
@@ -92,20 +107,29 @@ export async function* conversationalAiChat(input: AiChatInput): AsyncGenerator<
 
     if (finishReason === 'SAFETY') {
       console.warn('AI response stream potentially blocked/ended due to safety settings. Ratings:', safetyRatings);
-      // If no text was ever yielded, yield an error message. Otherwise, append a note.
       const message = "\n\n[I'm sorry, my response was interrupted or could not be fully completed due to safety guidelines.]";
       if (!hasYieldedText) yield "[Safety Block] I am unable to respond to that request."; else yield message;
     } else if (finishReason === 'MAX_TOKENS') {
       console.warn('AI response stream truncated due to max tokens.');
       yield "\n\n[My response was a bit long and may have been cut short.]";
-    } else if (!finalResponse.text() && finishReason !== 'STOP' && !hasYieldedText) { 
+    } else if (finalResponse.candidates?.[0]?.finishReason !== 'STOP' && !finalResponse.text() && !hasYieldedText) {
       // Check if there was no text at all in the final aggregated response unless it was a natural stop.
       console.warn('AI stream ended without substantial text output. Finish Reason:', finishReason, 'Full response:', JSON.stringify(finalResponse, null, 2));
-      yield "\n\n[I encountered an issue generating a complete response. Please try rephrasing.]";
+      if (!hasYieldedText) {
+        throw new Error("AI stream ended without text and not due to a natural stop.");
+      } else {
+        yield "\n\n[I encountered an issue generating a complete response. Please try rephrasing.]";
+      }
     }
 
   } catch (error) {
     console.error('Error during AI stream generation:', error);
-    throw error; // Re-throw original error
+    // Ensure the client gets a usable error message if an error is thrown from here.
+    if (error instanceof Error) {
+        throw error; // Re-throw original error if it's an Error instance
+    } else {
+        throw new Error('An unexpected error occurred in the AI stream.'); // Throw a generic error
+    }
   }
 }
+*/
