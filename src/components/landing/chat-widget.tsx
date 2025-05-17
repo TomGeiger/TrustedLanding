@@ -39,7 +39,7 @@ export function ChatWidget() {
   
   const [conversation, setConversation] = useState<ChatMessage[]>([]);
   const [currentMessage, setCurrentMessage] = useState('');
-  const [isAiResponding, setIsAiResponding] = useState(false); // Tracks if AI is currently generating a response
+  const [isAiResponding, setIsAiResponding] = useState(false); 
 
   const [inquiryQuestion, setInquiryQuestion] = useState('');
   const [name, setName] = useState('');
@@ -50,7 +50,7 @@ export function ChatWidget() {
   
   const { toast } = useToast();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
-  const currentAiMessageIdRef = useRef<string | null>(null); // To target the correct AI message for streaming updates
+  const currentAiMessageIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (scrollAreaRef.current) {
@@ -63,30 +63,62 @@ export function ChatWidget() {
     const newAiMessageId = `ai-${Date.now()}`;
     currentAiMessageIdRef.current = newAiMessageId;
 
-    // Add a placeholder for the AI's message
     setConversation(prev => [
       ...prev,
       { id: newAiMessageId, sender: 'ai', text: '', isStreaming: true }
     ]);
     
     try {
-      const stream = aiChatAction({ message, history });
-      let streamedText = '';
-      for await (const chunk of stream) {
-        streamedText += chunk;
-        setConversation(prevConv => 
-          prevConv.map(msg => 
-            msg.id === newAiMessageId ? { ...msg, text: streamedText, isStreaming: true } : msg
-          )
-        );
+      console.log('[ChatWidget] Calling aiChatAction with:', { message, history });
+      const streamResult = aiChatAction({ message, history });
+      
+      console.log('[ChatWidget] aiChatAction call result (raw):', streamResult);
+      console.log('[ChatWidget] typeof streamResult:', typeof streamResult);
+
+      if (!streamResult || typeof streamResult[Symbol.asyncIterator] !== 'function') {
+        console.error('[ChatWidget] streamResult is not an async iterable.', streamResult);
+        // Attempt to check if it's a promise that might have rejected
+        if (streamResult instanceof Promise) {
+          console.log('[ChatWidget] streamResult is a Promise. Awaiting to see if it rejected...');
+          try {
+            await streamResult; // This would throw if the promise is rejected.
+            // If it resolves without throwing, it's still not an iterable.
+            throw new Error('AI action returned a Promise that resolved to a non-iterable value.');
+          } catch (promiseError) {
+            console.error('[ChatWidget] Promise from aiChatAction rejected:', promiseError);
+            throw promiseError; // Re-throw the promise rejection error
+          }
+        }
+        throw new Error('AI action did not return an async iterable stream.');
       }
+      console.log('[ChatWidget] streamResult appears to be an async iterable. Starting iteration...');
+
+      let streamedText = '';
+      for await (const chunk of streamResult) {
+        if (typeof chunk === 'string') {
+          streamedText += chunk;
+          setConversation(prevConv => 
+            prevConv.map(msg => 
+              msg.id === newAiMessageId ? { ...msg, text: streamedText, isStreaming: true } : msg
+            )
+          );
+        } else {
+          console.warn('[ChatWidget] Received non-string chunk from stream:', chunk);
+        }
+      }
+      console.log('[ChatWidget] Stream iteration finished.');
+
     } catch (error: any) {
-      console.error("AI Streaming Error:", error);
-      const errorMessage = error.message || "An error occurred while fetching the AI response.";
+      console.error("[ChatWidget] AI Streaming Error (client-side catch):", error);
+      console.error("[ChatWidget] Error name:", error?.name);
+      console.error("[ChatWidget] Error message:", error?.message);
+      console.error("[ChatWidget] Error stack:", error?.stack);
+      
+      const errorMessageText = error.message || "An error occurred while fetching the AI response.";
       setConversation(prevConv => 
         prevConv.map(msg => 
           msg.id === newAiMessageId 
-          ? { ...msg, text: `Sorry, I encountered an issue: ${errorMessage}`, isStreaming: false } 
+          ? { ...msg, text: `Sorry, I encountered an issue: ${errorMessageText}`, isStreaming: false } 
           : msg
         )
       );
@@ -98,6 +130,7 @@ export function ChatWidget() {
         )
       );
       currentAiMessageIdRef.current = null;
+      console.log('[ChatWidget] streamAiResponse finally block executed.');
     }
   };
 
@@ -107,12 +140,13 @@ export function ChatWidget() {
     const userMessageText = currentMessage.trim();
     const newUserMessage: ChatMessage = { id: `user-${Date.now()}`, sender: 'user', text: userMessageText };
     
-    const updatedConversation = [...conversation, newUserMessage];
-    setConversation(updatedConversation);
+    const conversationForApi = [...conversation, newUserMessage];
+    setConversation(conversationForApi);
     setCurrentMessage('');
 
-    const historyForApi = updatedConversation
-      .filter(msg => msg.sender === 'user' || (msg.sender === 'ai' && msg.text.trim() !== '')) // only send completed AI messages as history
+    const historyForApi = conversationForApi // Use the latest conversation including the new user message for history context
+      .filter(msg => msg.id !== newUserMessage.id) // Exclude the current message from history being sent
+      .filter(msg => msg.sender === 'user' || (msg.sender === 'ai' && msg.text.trim() !== '' && !msg.isStreaming)) 
       .map(msg => ({
         sender: msg.sender,
         text: msg.text,
@@ -129,7 +163,7 @@ export function ChatWidget() {
     if (result.success) {
       setIsInquirySubmitted(true);
       toast({ title: "Inquiry Sent!", description: "Trish or her team will get back to you soon." });
-      setName(''); setEmail(''); setPhone('');
+      setName(''); setEmail(''); setPhone(''); setInquiryQuestion('');
     } else {
       toast({ title: "Submission Failed", description: result.message || "Could not submit your inquiry.", variant: "destructive" });
     }
@@ -141,9 +175,8 @@ export function ChatWidget() {
     if (!open) {
       setIsInquirySubmitted(false); 
     } else {
-      // Fetch initial greeting only if conversation is empty and AI is not already responding
       if (conversation.length === 0 && !isAiResponding) {
-         await streamAiResponse("Hello", []);
+         await streamAiResponse("Hello", []); 
       }
     }
   };
@@ -301,3 +334,4 @@ export function ChatWidget() {
     </>
   );
 }
+
