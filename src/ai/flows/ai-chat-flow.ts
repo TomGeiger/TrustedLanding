@@ -106,6 +106,6 @@ export async function* conversationalAiChat(input: AiChatInput): AsyncGenerator<
 
   } catch (error) {
     console.error('Error during AI stream generation:', error);
-    throw error; // Let the server action handle this by re-throwing
+    throw error; // Re-throw original error
   }
 }
