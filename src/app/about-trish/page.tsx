@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Briefcase, Coffee } from 'lucide-react';
 import type { Metadata } from 'next';
-import { ChatWidget } from '@/components/landing/chat-widget'; // Added ChatWidget import
+import { ChatWidget } from '@/components/landing/chat-widget';
 
 export const metadata: Metadata = {
   title: 'About Trish Geiger - Trusted Future',
@@ -26,7 +26,7 @@ export default function AboutTrishPage() {
             <div className="lg:col-span-1 flex justify-center">
               <div className="relative h-64 w-64 md:h-80 md:w-80 rounded-full overflow-hidden shadow-2xl border-4 border-primary/30">
                 <Image
-                  src="/images/trish3.jpeg"
+                  src="/images/trish2.jpeg"
                   alt="Patricia 'Trish' Geiger"
                   layout="fill"
                   objectFit="cover"
@@ -61,23 +61,22 @@ export default function AboutTrishPage() {
               </CardHeader>
               <CardContent className="space-y-4 text-lg text-foreground/80 leading-relaxed">
               <p>
-                  With over three years of dedicated experience in the financial services industry, Trish has cultivated a comprehensive understanding of wealth management strategies, retirement planning intricacies, and innovative insurance solutions. Her professional expertise is firmly rooted in a client-first philosophy, ensuring that every piece of advice and financial recommendation is meticulously tailored to meet the unique needs and long-term objectives of each individual and family she serves.
-                </p>
-                <p>
-                  Prior to her pivotal role in founding Trusted Future, Trish held several key positions at leading financial institutions. During this time, she sharpened her skills in critical areas such as advanced risk management, in-depth investment analysis, and sophisticated estate planning. She is widely recognized for her exceptional ability to demystify complex financial concepts, transforming them into accessible, understandable, and actionable strategies for her clients.
-                </p>
-                <p>
-                  Trish is deeply committed to continuous professional development and lifelong learning. She diligently stays abreast of the latest industry trends, emerging financial products, and evolving regulatory landscapes to ensure she provides the most current, effective, and compliant advice. Her unwavering dedication to professional excellence is paralleled only by her profound commitment to fostering the financial success and security of her clients.
-                </p>
-                <p>
-                  Beyond her direct client work, Trish is a dedicated leader and educator within Trusted Future. Each week, she conducts comprehensive **Illustration Training** sessions for the Trusted Future team. These sessions cover various insurance companies and their products, ensuring that Trusted Future agents have a broad understanding of the available options to best serve their clients.
-                </p>
-                <p>
-                  Furthermore, Trish is passionate about extending financial literacy to the wider community. Every Tuesday, she hosts a public Zoom call called **BTO** to educate individuals on fundamental financial principles and highlight the advantages of quality cash value life insurance, particularly Indexed Universal Life (IUL) policies. This initiative underscores her commitment to empowering others with financial knowledge.
-                </p>
-
-                 <p className="italic text-muted-foreground text-sm">
-                  (Further details about specific achievements, certifications, and methodologies can be expanded here to provide a fuller picture of Trish's professional background.)
+                With over three years in financial services, Trish offers deep expertise in wealth management, retirement planning, and innovative insurance solutions. Her client-first approach ensures tailored advice to meet individual and family objectives.
+              </p>
+              <p>
+                Before founding Trusted Future, Trish excelled in roles at leading financial institutions, refining her skills in risk management, investment analysis, and estate planning. She is known for making complex financial concepts understandable and actionable.
+              </p>
+              <p>
+                Trish is committed to continuous learning, staying updated on industry trends and regulations to provide current and effective advice. Her dedication to professional excellence matches her commitment to her clients' financial success.
+              </p>
+              <p>
+                As a leader at Trusted Future, Trish conducts weekly **Illustration Training** for the team, covering various insurance products to ensure agents can offer comprehensive solutions.
+              </p>
+              <p>
+                She also extends financial literacy to the public through her Tuesday **BTO** Zoom calls, educating on financial principles and the benefits of cash value life insurance, especially Indexed Universal Life (IUL) policies.
+              </p>
+                 <p className="italic text-muted-foreground text-sm pt-2">
+                  (More details on Trish's background, achievements, and certifications can be found by contacting us.)
                 </p>
               </CardContent>
             </Card>
@@ -112,7 +111,7 @@ export default function AboutTrishPage() {
         </SectionWrapper>
       </main>
       <Footer />
-      <ChatWidget /> {/* Added ChatWidget component here */}
+      <ChatWidget />
     </div>
   );
 }
