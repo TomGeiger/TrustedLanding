@@ -1,13 +1,17 @@
 
-'use client';
-
-import { useEffect, useState } from 'react';
+// Note: This component is an async Server Component.
+import * as React from 'react'; // Keep React import for JSX
+import Image from 'next/image';
+import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { SectionWrapper } from '@/components/landing/section-wrapper';
-import { CalendarDays, Video, Coffee, Hourglass } from 'lucide-react';
-import Image from 'next/image';
-import Link from 'next/link';
+import { CalendarDays, Video, Coffee, Hourglass, Sparkles } from 'lucide-react';
+import { editImage, type EditImageInput } from '@/ai/flows/edit-image-flow';
+import { ZoomQuoteClient } from './zoom-quote-client'; // Import the new client component
+
+const fs = require('fs/promises');
+const path = require('path');
 
 const motivationalQuotes = [
   "The secret of getting ahead is getting started.",
@@ -22,28 +26,62 @@ const motivationalQuotes = [
   "Dream bigger. Do bigger."
 ];
 
-export function ZoomSection() {
-  const [quote, setQuote] = useState('');
+export async function ZoomSection() {
+  const originalImageFileName = 'trish2.jpeg';
+  const originalImagePath = `/images/${originalImageFileName}`;
+  const originalImageAlt = "Mornings with Trish";
+  let displayImageUrl = originalImagePath;
+  let displayImageAlt = originalImageAlt;
+  let imageError: string | undefined = undefined;
+  let isAiEnhanced = false;
 
-  useEffect(() => {
-    // This will only run on the client, after initial hydration
-    const randomIndex = Math.floor(Math.random() * motivationalQuotes.length);
-    setQuote(motivationalQuotes[randomIndex]);
-  }, []); // Empty dependency array ensures this runs once on mount
+  try {
+    const imageFilePath = path.join(process.cwd(), 'public', 'images', originalImageFileName);
+    const imageBuffer = await fs.readFile(imageFilePath);
+    const base64Image = imageBuffer.toString('base64');
+    const mimeType = 'image/jpeg'; // Assuming trish2.jpeg is a JPEG
+    const sourceImageDataUri = `data:${mimeType};base64,${base64Image}`;
+
+    const editPromptInput: EditImageInput = {
+      sourceImageDataUri: sourceImageDataUri,
+      editPrompt: "Give this image a brighter, more energetic morning feel. Subtly enhance the colors and lighting to be warm and inviting, suitable for a motivational 'Mornings with Trish' session. Keep the professional look.",
+    };
+    console.log(`[ZoomSection] Attempting to edit image: ${originalImageFileName} with prompt: "${editPromptInput.editPrompt}"`);
+    const result = await editImage(editPromptInput);
+
+    if (result.editedImageUrl) {
+      displayImageUrl = result.editedImageUrl;
+      displayImageAlt = "AI-Enhanced portrait for Mornings with Trish";
+      isAiEnhanced = true;
+      console.log(`[ZoomSection] Successfully edited image for Mornings with Trish.`);
+    } else {
+      imageError = result.error || "Image editing flow did not return a URL for ZoomSection.";
+      console.error(`[ZoomSection] Failed to edit image: ${imageError}`);
+    }
+  } catch (error: any) {
+    imageError = error.message || "An error occurred while preparing or calling the image edit flow for ZoomSection.";
+    console.error(`[ZoomSection] Error during image editing setup: ${imageError}`);
+  }
 
   return (
     <SectionWrapper id="kickstart" className="bg-primary/5">
       <div className="grid md:grid-cols-5 gap-10 items-center">
         <div className="md:col-span-2 relative h-80 md:h-[400px] rounded-lg overflow-hidden shadow-xl order-last md:order-first">
-            <Image
-                src="/images/trish2.jpeg"
-                alt="Mornings with Trish"
-                layout="fill"
-                objectFit="cover"
-                data-ai-hint="motivational speaker online"
-                className="transform hover:scale-105 transition-transform duration-500"
-            />
-             <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
+          <Image
+            src={displayImageUrl}
+            alt={displayImageAlt}
+            layout="fill"
+            objectFit="cover"
+            data-ai-hint={isAiEnhanced ? "AI enhanced motivational speaker" : "motivational speaker online"}
+            className="transform hover:scale-105 transition-transform duration-500"
+            unoptimized={displayImageUrl.startsWith("data:")}
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
+           {isAiEnhanced && (
+            <div className="absolute top-2 right-2 bg-accent/80 text-accent-foreground text-xs font-semibold px-2 py-1 rounded-full shadow-md flex items-center backdrop-blur-sm">
+              <Sparkles className="h-3 w-3 mr-1" /> AI Enhanced
+            </div>
+          )}
         </div>
         <div className="md:col-span-3">
           <Card className="shadow-xl bg-card">
@@ -51,7 +89,7 @@ export function ZoomSection() {
               <div className="inline-flex items-center justify-center md:justify-start gap-2 mb-2 text-accent">
                 <Coffee className="h-8 w-8" />
                 <CardTitle className="text-3xl md:text-4xl font-bold text-accent">
-                    Mornings with Trish
+                  Mornings with Trish
                 </CardTitle>
               </div>
               <CardDescription className="text-lg text-muted-foreground">
@@ -65,12 +103,11 @@ export function ZoomSection() {
               </p>
             </CardHeader>
             <CardContent className="space-y-6">
-              {quote && (
-                <div className="mt-0 mb-6 p-4 border-l-4 border-accent bg-accent/20 rounded-r-md">
-                  <p className="italic text-accent/90 text-center md:text-left">
-                    &ldquo;{quote}&rdquo;
-                  </p>
-                </div>
+              <ZoomQuoteClient motivationalQuotes={motivationalQuotes} />
+              {imageError && (
+                <p className="text-sm text-destructive text-center md:text-left">
+                  AI image enhancement failed: {imageError}. Displaying original.
+                </p>
               )}
               <div className="flex items-start gap-4">
                 <CalendarDays className="h-7 w-7 text-primary mt-1 flex-shrink-0" />
