@@ -2,10 +2,10 @@
 'use server';
 
 import { z } from 'zod';
+import { conversationalAiChat, type AiChatInput, type AiChatHistoryItem } from '@/ai/flows/ai-chat-flow';
 
-// Schema remains for type definition, but not used for validation in this test version
 const AiClientChatInputSchema = z.object({
-  message: z.string(),
+  message: z.string().min(1, "Message cannot be empty."),
   history: z.array(
     z.object({
       sender: z.enum(['user', 'ai']),
@@ -16,68 +16,46 @@ const AiClientChatInputSchema = z.object({
 
 export type AiClientChatInput = z.infer<typeof AiClientChatInputSchema>;
 
-// Test version - yields hardcoded strings, validation removed
 export async function* aiChatAction(
   data: AiClientChatInput
 ): AsyncGenerator<string, void, undefined> {
-  console.log('[TEST ACTION] aiChatAction called with input:', data.message);
+  // Add a slight delay to ensure this function is treated as async generator from the start
+  // and allows the client to set up its stream consumer properly.
+  await Promise.resolve(); 
 
-  // Validation removed for this test to ensure no sync errors before first yield
+  const validation = AiClientChatInputSchema.safeParse(data);
+
+  if (!validation.success) {
+    // If validation fails, we should yield an error message or throw.
+    // Throwing an error here might be caught by the client's overall try/catch.
+    // Yielding allows for a more controlled error message within the chat.
+    console.error('AI Chat Action Validation Error:', validation.error.flatten());
+    yield `[Error] Invalid input: ${validation.error.errors.map(e => e.message).join(', ')}`;
+    return;
+  }
 
   try {
-    yield "Action Stream: Part 1. ";
-    await new Promise(resolve => setTimeout(resolve, 200)); // Simulate async work
-    yield `Action Stream: Echoing '${data.message}'. `;
-    await new Promise(resolve => setTimeout(resolve, 200));
-    yield "Action Stream: Part 3. Finished.";
-    console.log('[TEST ACTION] aiChatAction finished yielding.');
-    return;
-  } catch (error) {
-    console.error('[TEST ACTION] Error in aiChatAction:', error);
-    // Try to yield an error message if possible, though if the stream itself is broken, this might not reach the client.
-    try {
-      yield "[TEST ACTION ERROR] An error occurred within the test action.";
-    } catch (yieldError) {
-      // Ignore error during yielding error message
+    const { message, history: clientHistory } = validation.data;
+
+    const genkitHistory: AiChatHistoryItem[] = (clientHistory || []).map(item => ({
+      role: item.sender === 'user' ? 'user' : 'model',
+      parts: [{ text: item.text }],
+    }));
+
+    const flowInput: AiChatInput = {
+      message,
+      history: genkitHistory,
+    };
+
+    const stream = conversationalAiChat(flowInput);
+    for await (const chunk of stream) {
+      yield chunk;
     }
-    throw error; // Re-throw original error
+    return; 
+  } catch (error: any) {
+    console.error('Error in AI chat action streaming:', error);
+    // Yield a user-friendly error message that can be displayed in the chat.
+    // Avoid re-throwing here as it might break the stream consumption on client for some Next.js versions.
+    yield `[Error] Failed to get AI response. Details: ${error.message || 'Unknown error'}. Please try again later.`;
   }
 }
-
-/*
-// Original version calling the flow:
-// import { conversationalAiChat, type AiChatInput, type AiChatHistoryItem } from '@/ai/flows/ai-chat-flow';
-// export async function* aiChatAction(
-//   data: AiClientChatInput
-// ): AsyncGenerator<string, void, undefined> {
-//   const validation = AiClientChatInputSchema.safeParse(data);
-
-//   if (!validation.success) {
-//     throw new Error('Invalid input: ' + validation.error.errors.map(e => e.message).join(', '));
-//   }
-
-//   try {
-//     const { message, history: clientHistory } = validation.data;
-
-//     const genkitHistory: AiChatHistoryItem[] = (clientHistory || []).map(item => ({
-//       role: item.sender === 'user' ? 'user' : 'model',
-//       parts: [{ text: item.text }],
-//     }));
-
-//     const flowInput: AiChatInput = {
-//       message,
-//       history: genkitHistory,
-//     };
-
-//     const stream = conversationalAiChat(flowInput);
-//     for await (const chunk of stream) {
-//       yield chunk;
-//     }
-//     return; 
-//   } catch (error: any) {
-//     console.error('Error in AI chat action streaming:', error);
-//     // Re-throw the original error to be caught by the client
-//     throw error;
-//   }
-// }
-*/
