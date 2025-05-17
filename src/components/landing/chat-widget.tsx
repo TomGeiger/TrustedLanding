@@ -15,7 +15,7 @@ import {
   SheetDescription,
   SheetFooter,
 } from '@/components/ui/sheet';
-import { 
+import {
   Accordion,
   AccordionContent,
   AccordionItem,
@@ -31,15 +31,15 @@ interface ChatMessage {
   id: string;
   sender: 'user' | 'ai';
   text: string;
-  isStreaming?: boolean; 
+  isStreaming?: boolean;
 }
 
 export function ChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
-  
+
   const [conversation, setConversation] = useState<ChatMessage[]>([]);
   const [currentMessage, setCurrentMessage] = useState('');
-  const [isAiResponding, setIsAiResponding] = useState(false); 
+  const [isAiResponding, setIsAiResponding] = useState(false);
 
   const [inquiryQuestion, setInquiryQuestion] = useState('');
   const [name, setName] = useState('');
@@ -47,7 +47,7 @@ export function ChatWidget() {
   const [phone, setPhone] = useState('');
   const [isInquirySubmitted, setIsInquirySubmitted] = useState(false);
   const [isInquiryLoading, setIsInquiryLoading] = useState(false);
-  
+
   const { toast } = useToast();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const currentAiMessageIdRef = useRef<string | null>(null);
@@ -67,19 +67,15 @@ export function ChatWidget() {
       ...prev,
       { id: newAiMessageId, sender: 'ai', text: '', isStreaming: true }
     ]);
-    
+
     let streamedText = '';
     try {
       console.log('[ChatWidget] Calling aiChatAction with:', { message, history });
-      // Explicitly await the server action call.
-      // The result of an async server action call from the client is a Promise.
-      // This Promise should resolve to the async iterable (the stream).
-      const stream = await aiChatAction({ message, history }); 
-      
+      const stream = await aiChatAction({ message, history });
+
       console.log('[ChatWidget] aiChatAction call result (awaited, raw stream object):', stream);
       console.log('[ChatWidget] typeof stream (awaited):', typeof stream);
-      
-      // Check if it's an async iterable directly
+
       if (!stream || typeof stream[Symbol.asyncIterator] !== 'function') {
          console.error('[ChatWidget] CRITICAL: aiChatAction (awaited) did not return an async iterable object. Value:', stream);
          throw new Error('AI action did not return a valid stream.');
@@ -89,8 +85,8 @@ export function ChatWidget() {
       for await (const chunk of stream) {
         if (typeof chunk === 'string') {
           streamedText += chunk;
-          setConversation(prevConv => 
-            prevConv.map(msg => 
+          setConversation(prevConv =>
+            prevConv.map(msg =>
               msg.id === newAiMessageId ? { ...msg, text: streamedText, isStreaming: true } : msg
             )
           );
@@ -105,17 +101,17 @@ export function ChatWidget() {
       console.error("[ChatWidget] Error name:", error?.name);
       console.error("[ChatWidget] Error message:", error?.message);
       console.error("[ChatWidget] Error stack:", error?.stack);
-      
+
       const errorMessageText = error.message || "An error occurred while fetching the AI response.";
       if (currentAiMessageIdRef.current === newAiMessageId && conversation.find(m => m.id === newAiMessageId)) {
-        setConversation(prevConv => 
-            prevConv.map(msg => 
-            msg.id === newAiMessageId 
-            ? { ...msg, text: `Sorry, I encountered an issue: ${errorMessageText}`, isStreaming: false } 
+        setConversation(prevConv =>
+            prevConv.map(msg =>
+            msg.id === newAiMessageId
+            ? { ...msg, text: `Sorry, I encountered an issue: ${errorMessageText}`, isStreaming: false }
             : msg
             )
         );
-      } else { 
+      } else {
         setConversation(prev => [
             ...prev,
             { id: newAiMessageId, sender: 'ai', text: `Sorry, I encountered an issue: ${errorMessageText}`, isStreaming: false }
@@ -123,12 +119,12 @@ export function ChatWidget() {
       }
     } finally {
       setIsAiResponding(false);
-      setConversation(prevConv => 
-        prevConv.map(msg => 
+      setConversation(prevConv =>
+        prevConv.map(msg =>
           msg.id === currentAiMessageIdRef.current ? { ...msg, isStreaming: false } : msg
         )
       );
-      currentAiMessageIdRef.current = null; 
+      currentAiMessageIdRef.current = null;
       console.log('[ChatWidget] streamAiResponse finally block executed.');
     }
   };
@@ -138,19 +134,19 @@ export function ChatWidget() {
 
     const userMessageText = currentMessage.trim();
     const newUserMessage: ChatMessage = { id: `user-${Date.now()}`, sender: 'user', text: userMessageText };
-    
+
     const conversationForApi = [...conversation, newUserMessage];
     setConversation(conversationForApi);
     setCurrentMessage('');
 
-    const historyForApi = conversationForApi 
-      .filter(msg => msg.id !== newUserMessage.id) 
-      .filter(msg => msg.sender === 'user' || (msg.sender === 'ai' && msg.text.trim() !== '' && !msg.isStreaming)) 
+    const historyForApi = conversationForApi
+      .filter(msg => msg.id !== newUserMessage.id)
+      .filter(msg => msg.sender === 'user' || (msg.sender === 'ai' && msg.text.trim() !== '' && !msg.isStreaming))
       .map(msg => ({
         sender: msg.sender,
         text: msg.text,
     }));
-    
+
     await streamAiResponse(userMessageText, historyForApi);
   };
 
@@ -172,13 +168,12 @@ export function ChatWidget() {
   const handleSheetOpenChange = async (open: boolean) => {
     setIsOpen(open);
     if (!open) {
-      setIsInquirySubmitted(false); 
+      setIsInquirySubmitted(false);
     } else {
+      // If opening the sheet AND it's the first time (conversation is empty) AND AI is not already responding
       if (conversation.length === 0 && !isAiResponding) {
-         const initialAiMessage: ChatMessage = { id: `ai-${Date.now()}`, sender: 'ai', text: '', isStreaming: true };
-         currentAiMessageIdRef.current = initialAiMessage.id;
-         setConversation([initialAiMessage]);
-         await streamAiResponse("Hello", []); 
+         // streamAiResponse will create and manage the AI message placeholder.
+         await streamAiResponse("Hello", []);
       }
     }
   };
@@ -219,8 +214,8 @@ export function ChatWidget() {
               >
                 <div className={cn(
                     "max-w-[80%] p-3 rounded-lg shadow",
-                    msg.sender === 'user' 
-                        ? 'bg-primary text-primary-foreground rounded-br-none' 
+                    msg.sender === 'user'
+                        ? 'bg-primary text-primary-foreground rounded-br-none'
                         : 'bg-muted text-foreground rounded-bl-none'
                 )}>
                   <p className="text-sm whitespace-pre-wrap">{msg.text}</p>
@@ -234,7 +229,7 @@ export function ChatWidget() {
               </div>
             ))}
           </ScrollArea>
-          
+
           <div className="px-4 pb-2 pt-2 border-t bg-background">
             <div className="flex items-center space-x-2">
               <Input
@@ -251,7 +246,7 @@ export function ChatWidget() {
               </Button>
             </div>
           </div>
-          
+
           <Accordion type="single" collapsible className="w-full border-t">
             <AccordionItem value="consultation-form" className="border-b-0">
               <AccordionTrigger className="px-6 py-3 text-sm hover:no-underline text-muted-foreground hover:text-primary [&[data-state=open]>svg]:text-primary">
