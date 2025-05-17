@@ -67,9 +67,12 @@ export function ChatWidget() {
     }
   }, [conversation]);
 
-  const streamAiResponse = async (message: string, history: AiClientChatInput['history']) => {
+  const streamAiResponse = async (message: string, history: AiClientChatInput['history'], isInitialGreetingStream: boolean = false) => {
     setIsAiResponding(true);
-    setShowSamplePrompts(false); // Hide sample prompts once interaction starts
+    if (!isInitialGreetingStream) {
+      setShowSamplePrompts(false);
+    }
+
     const newAiMessageId = `ai-${Date.now()}`;
     currentAiMessageIdRef.current = newAiMessageId;
 
@@ -79,6 +82,7 @@ export function ChatWidget() {
     ]);
 
     let streamedText = '';
+    let streamHadError = false;
     try {
       console.log('[ChatWidget] Calling aiChatAction with:', { message, history });
       const streamResult = await aiChatAction({ message, history });
@@ -86,13 +90,11 @@ export function ChatWidget() {
       console.log('[ChatWidget] aiChatAction call result (awaited, raw stream object):', streamResult);
       console.log('[ChatWidget] typeof stream (awaited):', typeof streamResult);
 
-
       if (!streamResult || typeof streamResult[Symbol.asyncIterator] !== 'function') {
          console.error('[ChatWidget] CRITICAL: aiChatAction (awaited) did not return an async iterable object. Value:', streamResult);
-         throw new Error('AI action did not return a valid stream.');
+         streamHadError = true; throw new Error('AI action did not return a valid stream.');
       }
       console.log('[ChatWidget] Stream (awaited) appears to be an async iterable. Starting iteration...');
-
 
       for await (const chunk of streamResult) {
         if (typeof chunk === 'string') {
@@ -124,45 +126,41 @@ export function ChatWidget() {
             errorMessageText = error.message;
         }
       }
-
-
+      streamHadError = true;
+      streamedText = `Sorry, I encountered an issue: ${errorMessageText}`;
+      
       if (currentAiMessageIdRef.current === newAiMessageId && conversation.find(m => m.id === newAiMessageId)) {
-        setConversation(prevConv =>
-            prevConv.map(msg =>
-            msg.id === newAiMessageId
-            ? { ...msg, text: `Sorry, I encountered an issue: ${errorMessageText}`, isStreaming: false }
-            : msg
-            )
-        );
+        // This path should ideally not be needed if the finally block handles the final state
       } else {
-         // This case might happen if the placeholder itself failed to be added.
+        // This case might happen if the placeholder itself failed to be added.
         setConversation(prev => [
             ...prev,
             { id: newAiMessageId, sender: 'ai', text: `Sorry, I encountered an issue: ${errorMessageText}`, isStreaming: false }
         ]);
       }
     } finally {
-      setIsAiResponding(false);
       setConversation(prevConv =>
-        prevConv.map(msg => {
-          if (msg.id === currentAiMessageIdRef.current) {
-            // Check if this was the initial greeting message
-            if (history && history.length === 0 && message.toLowerCase() === "hello" && msg.sender === 'ai') {
-              setShowSamplePrompts(true); // Show sample prompts after initial greeting
-            }
-            return { ...msg, isStreaming: false };
-          }
-          return msg;
-        })
+        prevConv.map(msg =>
+          msg.id === newAiMessageId ? { ...msg, text: streamedText, isStreaming: false } : msg
+        )
       );
+      setIsAiResponding(false);
       currentAiMessageIdRef.current = null;
+
+      if (isInitialGreetingStream && !streamHadError) {
+        setShowSamplePrompts(true);
+        console.log("[ChatWidget] Initial greeting stream finished successfully. setShowSamplePrompts(true)");
+      } else if (isInitialGreetingStream && streamHadError) {
+        setShowSamplePrompts(false);
+        console.log("[ChatWidget] Initial greeting stream failed. setShowSamplePrompts(false)");
+      }
       console.log('[ChatWidget] streamAiResponse finally block executed.');
     }
   };
 
   const handleAiMessageSend = async () => {
     if (!currentMessage.trim() || isAiResponding) return;
-    setShowSamplePrompts(false); // Hide sample prompts when user sends a message
+    setShowSamplePrompts(false); 
 
     const userMessageText = currentMessage.trim();
     const newUserMessage: ChatMessage = { id: `user-${Date.now()}`, sender: 'user', text: userMessageText };
@@ -179,12 +177,12 @@ export function ChatWidget() {
         text: msg.text,
     }));
 
-    await streamAiResponse(userMessageText, historyForApi);
+    await streamAiResponse(userMessageText, historyForApi, false);
   };
 
   const handleSamplePromptClick = (promptText: string) => {
+    setShowSamplePrompts(false);
     setCurrentMessage(promptText);
-    // Use a timeout to ensure currentMessage state updates before handleAiMessageSend is called
     setTimeout(() => {
       handleAiMessageSend();
     }, 0);
@@ -210,15 +208,17 @@ export function ChatWidget() {
     setIsOpen(open);
     if (!open) {
       setIsInquirySubmitted(false);
-      setShowSamplePrompts(false); // Hide prompts when sheet closes
+      setShowSamplePrompts(false); 
     } else {
-      // Only stream initial greeting if conversation is empty AND AI is not already responding
       if (conversation.length === 0 && !isAiResponding) {
-         await streamAiResponse("Hello", []);
-         // setShowSamplePrompts will be set to true in streamAiResponse's finally block for initial greeting
-      } else if (conversation.length === 1 && conversation[0].sender === 'ai' && !conversation[0].isStreaming) {
-        // This case covers re-opening the sheet when only the AI greeting exists and is not streaming
+         console.log("[ChatWidget] Sheet opened, conversation empty. Streaming initial AI greeting.");
+         setShowSamplePrompts(false); // Hide prompts while initial greeting is streaming
+         await streamAiResponse("Hello", [], true); 
+      } else if (conversation.length === 1 && conversation[0].sender === 'ai' && !conversation[0].isStreaming && !isAiResponding) {
+        console.log("[ChatWidget] Sheet reopened, only AI greeting exists and not streaming. Showing sample prompts.");
         setShowSamplePrompts(true);
+      } else if (conversation.length > 0) {
+        setShowSamplePrompts(false);
       }
     }
   };
@@ -302,7 +302,9 @@ export function ChatWidget() {
                 value={currentMessage}
                 onChange={(e) => {
                   setCurrentMessage(e.target.value);
-                  if (e.target.value.trim() !== '') setShowSamplePrompts(false); // Hide prompts when user starts typing
+                  if (e.target.value.trim() !== '') {
+                     setShowSamplePrompts(false); 
+                  }
                 }}
                 placeholder="Ask Trish anything..."
                 onKeyPress={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleAiMessageSend(); }}}
