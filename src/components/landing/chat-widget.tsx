@@ -71,17 +71,20 @@ export function ChatWidget() {
     let streamedText = '';
     try {
       console.log('[ChatWidget] Calling aiChatAction with:', { message, history });
-      const stream = aiChatAction({ message, history }); // Call the action
+      // Explicitly await the server action call.
+      // The result of an async server action call from the client is a Promise.
+      // This Promise should resolve to the async iterable (the stream).
+      const stream = await aiChatAction({ message, history }); 
       
-      console.log('[ChatWidget] aiChatAction call result (raw stream object):', stream);
-      console.log('[ChatWidget] typeof stream:', typeof stream);
+      console.log('[ChatWidget] aiChatAction call result (awaited, raw stream object):', stream);
+      console.log('[ChatWidget] typeof stream (awaited):', typeof stream);
       
       // Check if it's an async iterable directly
       if (!stream || typeof stream[Symbol.asyncIterator] !== 'function') {
-         console.error('[ChatWidget] CRITICAL: aiChatAction did not return an async iterable object. Value:', stream);
+         console.error('[ChatWidget] CRITICAL: aiChatAction (awaited) did not return an async iterable object. Value:', stream);
          throw new Error('AI action did not return a valid stream.');
       }
-      console.log('[ChatWidget] Stream appears to be an async iterable. Starting iteration...');
+      console.log('[ChatWidget] Stream (awaited) appears to be an async iterable. Starting iteration...');
 
       for await (const chunk of stream) {
         if (typeof chunk === 'string') {
@@ -104,7 +107,6 @@ export function ChatWidget() {
       console.error("[ChatWidget] Error stack:", error?.stack);
       
       const errorMessageText = error.message || "An error occurred while fetching the AI response.";
-      // Update the current AI message with the error, or add a new error message if it's a very early failure
       if (currentAiMessageIdRef.current === newAiMessageId && conversation.find(m => m.id === newAiMessageId)) {
         setConversation(prevConv => 
             prevConv.map(msg => 
@@ -113,7 +115,7 @@ export function ChatWidget() {
             : msg
             )
         );
-      } else { // If the placeholder AI message wasn't even added
+      } else { 
         setConversation(prev => [
             ...prev,
             { id: newAiMessageId, sender: 'ai', text: `Sorry, I encountered an issue: ${errorMessageText}`, isStreaming: false }
@@ -126,7 +128,7 @@ export function ChatWidget() {
           msg.id === currentAiMessageIdRef.current ? { ...msg, isStreaming: false } : msg
         )
       );
-      currentAiMessageIdRef.current = null; // Clear ref after stream ends or fails
+      currentAiMessageIdRef.current = null; 
       console.log('[ChatWidget] streamAiResponse finally block executed.');
     }
   };
@@ -173,7 +175,6 @@ export function ChatWidget() {
       setIsInquirySubmitted(false); 
     } else {
       if (conversation.length === 0 && !isAiResponding) {
-         // Initial greeting
          const initialAiMessage: ChatMessage = { id: `ai-${Date.now()}`, sender: 'ai', text: '', isStreaming: true };
          currentAiMessageIdRef.current = initialAiMessage.id;
          setConversation([initialAiMessage]);
