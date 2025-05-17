@@ -1,15 +1,15 @@
 
 'use server';
 /**
- * @fileOverview A Genkit flow for handling AI-powered chat conversations.
+ * @fileOverview A Genkit flow for handling AI-powered chat conversations with streaming.
  *
- * - conversationalAiChat - A function that generates an AI response based on user input and conversation history.
- * - AiChatInput - The input type for the conversationalAiChat.
- * - AiChatOutput - The return type for the conversationalAiChat.
+ * - conversationalAiChat - An async generator function that streams AI responses.
+ * - AiChatInput - The input type for conversationalAiChat.
  * - AiChatHistoryItem - The type for individual items in the chat history.
  */
 
 import {ai} from '@/ai/genkit';
+import type {GenerateResponseChunk} from 'genkit';
 import {z} from 'genkit';
 
 const AiChatHistoryItemSchema = z.object({
@@ -24,10 +24,9 @@ const AiChatInputSchema = z.object({
 });
 export type AiChatInput = z.infer<typeof AiChatInputSchema>;
 
-const AiChatOutputSchema = z.object({
-  response: z.string().describe('The AI-generated response.'),
-});
-export type AiChatOutput = z.infer<typeof AiChatOutputSchema>;
+// AiChatOutput and AiChatOutputSchema are no longer directly returned by the main streaming function,
+// but the final response from ai.generateStream would conform to a similar structure if an output schema were used in a prompt.
+// For simplicity with dynamic string prompts, we handle text streaming directly.
 
 const financialMotivationalQuotes = [
   "The best time to plant a tree was 20 years ago. The second best time is now.",
@@ -41,10 +40,6 @@ const financialMotivationalQuotes = [
   "Success is not final, failure is not fatal: It is the courage to continue that counts.",
   "The only limit to our realization of tomorrow will be our doubts of today."
 ];
-
-export async function conversationalAiChat(input: AiChatInput): Promise<AiChatOutput> {
-  return aiChatFlow(input);
-}
 
 const chatPromptTemplateString = `You are Trish, a friendly, knowledgeable, highly motivational, and professional assistant for Trusted Future, a financial services agency. Your expertise lies in Life Insurance, and you also serve as a business mentor, helping Trusted Future agents grow their potential. Your primary goal is to answer questions about financial planning, Indexed Universal Life (IUL) insurance, retirement strategies, and the services offered by Trusted Future. You should also offer motivational insights when appropriate.
 
@@ -63,66 +58,54 @@ If the user expresses interest in a consultation, scheduling a meeting, or wants
 User's latest message: __USER_MESSAGE__`;
 
 
-const aiChatFlow = ai.defineFlow(
-  {
-    name: 'aiChatFlow',
-    inputSchema: AiChatInputSchema,
-    outputSchema: AiChatOutputSchema,
-  },
-  async (input) => { // input contains { message: string, history?: AiChatHistoryItem[] }
-    
-    const randomQuote = financialMotivationalQuotes[Math.floor(Math.random() * financialMotivationalQuotes.length)];
-    let finalPrompt = chatPromptTemplateString.replace('__USER_MESSAGE__', input.message);
-    finalPrompt = finalPrompt.replace('__RANDOM_QUOTE__', randomQuote);
+export async function* conversationalAiChat(input: AiChatInput): AsyncGenerator<string, void, undefined> {
+  const randomQuote = financialMotivationalQuotes[Math.floor(Math.random() * financialMotivationalQuotes.length)];
+  let finalPrompt = chatPromptTemplateString.replace('__USER_MESSAGE__', input.message);
+  finalPrompt = finalPrompt.replace('__RANDOM_QUOTE__', randomQuote);
 
-    const generationResult = await ai.generate({
+  try {
+    const {stream, response: finalResponsePromise} = ai.generateStream({
       prompt: finalPrompt,
       history: input.history || [],
       config: {
         safetySettings: [
-          {
-            category: 'HARM_CATEGORY_HARASSMENT',
-            threshold: 'BLOCK_MEDIUM_AND_ABOVE',
-          },
-           {
-            category: 'HARM_CATEGORY_HATE_SPEECH',
-            threshold: 'BLOCK_MEDIUM_AND_ABOVE',
-          },
-           {
-            category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
-            threshold: 'BLOCK_MEDIUM_AND_ABOVE',
-          },
-           {
-            category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
-            threshold: 'BLOCK_MEDIUM_AND_ABOVE',
-          }
+          { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+          { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+          { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+          { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' }
         ],
       }
     });
-    
-    console.log('Raw AI Generation Result:', JSON.stringify(generationResult, null, 2));
 
-    if (!generationResult) {
-        console.error('AI generation returned a null or undefined result object entirely.');
-        return { response: "I'm sorry, the AI service returned an unexpected empty result. Please try again." };
+    let hasYieldedText = false;
+    for await (const chunk of stream) {
+      if (chunk.text) {
+        yield chunk.text;
+        hasYieldedText = true;
+      }
     }
-    
-    if (!generationResult.text) {
-        const finishReason = generationResult.candidates?.[0]?.finishReason;
-        const safetyRatings = generationResult.candidates?.[0]?.safetyRatings;
 
-        if (finishReason === 'SAFETY') {
-             console.warn('AI response blocked due to safety settings. Ratings:', safetyRatings);
-             return { response: "I'm sorry, I can't respond to that as it may have triggered a safety guideline. Can I help with something else related to your financial goals?" };
-        }
-         if (finishReason === 'MAX_TOKENS') {
-            console.warn('AI response truncated due to max tokens.');
-            return { response: "My response was a bit long and got cut short. Could you ask a more specific question, or perhaps break it down?" };
-        }
-        console.error('AI did not return text. Finish reason:', finishReason, 'Full generation result:', JSON.stringify(generationResult, null, 2));
-        return { response: "I'm sorry, I encountered an issue generating a response. Could you please rephrase or try again?" };
+    // After streaming, check the final response for issues
+    const finalResponse = await finalResponsePromise;
+    const finishReason = finalResponse.candidates?.[0]?.finishReason;
+    const safetyRatings = finalResponse.candidates?.[0]?.safetyRatings;
+
+    if (finishReason === 'SAFETY') {
+      console.warn('AI response stream potentially blocked/ended due to safety settings. Ratings:', safetyRatings);
+      // If no text was ever yielded, yield an error message. Otherwise, append a note.
+      const message = "\n\n[I'm sorry, my response was interrupted or could not be fully completed due to safety guidelines.]";
+      if (!hasYieldedText) yield "[Safety Block] I am unable to respond to that request."; else yield message;
+    } else if (finishReason === 'MAX_TOKENS') {
+      console.warn('AI response stream truncated due to max tokens.');
+      yield "\n\n[My response was a bit long and may have been cut short.]";
+    } else if (!finalResponse.text() && finishReason !== 'STOP' && !hasYieldedText) { 
+      // Check if there was no text at all in the final aggregated response unless it was a natural stop.
+      console.warn('AI stream ended without substantial text output. Finish Reason:', finishReason, 'Full response:', JSON.stringify(finalResponse, null, 2));
+      yield "\n\n[I encountered an issue generating a complete response. Please try rephrasing.]";
     }
-    return { response: generationResult.text };
+
+  } catch (error) {
+    console.error('Error during AI stream generation:', error);
+    throw error; // Let the server action handle this by re-throwing
   }
-);
-
+}

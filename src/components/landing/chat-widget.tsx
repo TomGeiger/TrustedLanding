@@ -20,8 +20,8 @@ import {
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-} from "@/components/ui/accordion"; // Added Accordion imports
-import { MessageSquare, Send, User, Mail, Phone, CheckCircle, Bot, Sparkles, FileText, ChevronDown } from 'lucide-react';
+} from "@/components/ui/accordion";
+import { MessageSquare, Send, User, Mail, Phone, CheckCircle, Bot, Sparkles, FileText } from 'lucide-react';
 import { sendChatInquiry, type ChatInquiryInput } from '@/app/actions/send-chat-inquiry';
 import { aiChatAction, type AiClientChatInput } from '@/app/actions/ai-chat-action';
 import { useToast } from "@/hooks/use-toast";
@@ -31,17 +31,16 @@ interface ChatMessage {
   id: string;
   sender: 'user' | 'ai';
   text: string;
+  isStreaming?: boolean; 
 }
 
 export function ChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
   
-  // AI Chat state
   const [conversation, setConversation] = useState<ChatMessage[]>([]);
   const [currentMessage, setCurrentMessage] = useState('');
-  const [isAiLoading, setIsAiLoading] = useState(false);
+  const [isAiResponding, setIsAiResponding] = useState(false); // Tracks if AI is currently generating a response
 
-  // Inquiry Form state
   const [inquiryQuestion, setInquiryQuestion] = useState('');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -51,6 +50,7 @@ export function ChatWidget() {
   
   const { toast } = useToast();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const currentAiMessageIdRef = useRef<string | null>(null); // To target the correct AI message for streaming updates
 
   useEffect(() => {
     if (scrollAreaRef.current) {
@@ -58,86 +58,92 @@ export function ChatWidget() {
     }
   }, [conversation]);
 
+  const streamAiResponse = async (message: string, history: AiClientChatInput['history']) => {
+    setIsAiResponding(true);
+    const newAiMessageId = `ai-${Date.now()}`;
+    currentAiMessageIdRef.current = newAiMessageId;
+
+    // Add a placeholder for the AI's message
+    setConversation(prev => [
+      ...prev,
+      { id: newAiMessageId, sender: 'ai', text: '', isStreaming: true }
+    ]);
+    
+    try {
+      const stream = aiChatAction({ message, history });
+      let streamedText = '';
+      for await (const chunk of stream) {
+        streamedText += chunk;
+        setConversation(prevConv => 
+          prevConv.map(msg => 
+            msg.id === newAiMessageId ? { ...msg, text: streamedText, isStreaming: true } : msg
+          )
+        );
+      }
+    } catch (error: any) {
+      console.error("AI Streaming Error:", error);
+      const errorMessage = error.message || "An error occurred while fetching the AI response.";
+      setConversation(prevConv => 
+        prevConv.map(msg => 
+          msg.id === newAiMessageId 
+          ? { ...msg, text: `Sorry, I encountered an issue: ${errorMessage}`, isStreaming: false } 
+          : msg
+        )
+      );
+    } finally {
+      setIsAiResponding(false);
+      setConversation(prevConv => 
+        prevConv.map(msg => 
+          msg.id === newAiMessageId ? { ...msg, isStreaming: false } : msg
+        )
+      );
+      currentAiMessageIdRef.current = null;
+    }
+  };
+
   const handleAiMessageSend = async () => {
-    if (!currentMessage.trim()) return;
+    if (!currentMessage.trim() || isAiResponding) return;
 
     const userMessageText = currentMessage.trim();
-    const newUserMessage: ChatMessage = { id: Date.now().toString(), sender: 'user', text: userMessageText };
+    const newUserMessage: ChatMessage = { id: `user-${Date.now()}`, sender: 'user', text: userMessageText };
     
-    const currentConversation = [...conversation, newUserMessage];
-    setConversation(currentConversation);
+    const updatedConversation = [...conversation, newUserMessage];
+    setConversation(updatedConversation);
     setCurrentMessage('');
-    setIsAiLoading(true);
 
-    const historyForApi = conversation.map(msg => ({ // Use `conversation` state before adding newUserMessage
+    const historyForApi = updatedConversation
+      .filter(msg => msg.sender === 'user' || (msg.sender === 'ai' && msg.text.trim() !== '')) // only send completed AI messages as history
+      .map(msg => ({
         sender: msg.sender,
         text: msg.text,
     }));
     
-    const result = await aiChatAction({ message: userMessageText, history: historyForApi });
-
-    if (result.success && result.response) {
-      const aiResponse: ChatMessage = { id: (Date.now() + 1).toString(), sender: 'ai', text: result.response };
-      setConversation(prev => [...prev, aiResponse]);
-    } else {
-      toast({
-        title: "AI Response Error",
-        description: result.errorMessage || "Could not get a response from AI.",
-        variant: "destructive",
-      });
-       const aiErrorResponse: ChatMessage = { id: (Date.now() + 1).toString(), sender: 'ai', text: result.errorMessage || "Sorry, I'm having trouble connecting right now. Please try again in a moment." };
-      setConversation(prev => [...prev, aiErrorResponse]);
-    }
-    setIsAiLoading(false);
+    await streamAiResponse(userMessageText, historyForApi);
   };
 
   const handleInquirySubmit = async (e: FormEvent) => {
     e.preventDefault();
     setIsInquiryLoading(true);
-
     const inquiryData: ChatInquiryInput = { name, email, phone, question: inquiryQuestion };
     const result = await sendChatInquiry(inquiryData);
-
     if (result.success) {
       setIsInquirySubmitted(true);
-      toast({
-        title: "Inquiry Sent!",
-        description: "Trish or her team will get back to you soon.",
-        variant: "default",
-      });
-      // Clear form fields only, keep inquiryQuestion for context if they re-open form
-      // setInquiryQuestion(''); 
-      setName('');
-      setEmail('');
-      setPhone('');
+      toast({ title: "Inquiry Sent!", description: "Trish or her team will get back to you soon." });
+      setName(''); setEmail(''); setPhone('');
     } else {
-      toast({
-        title: "Submission Failed",
-        description: result.message || "Could not submit your inquiry. Please try again.",
-        variant: "destructive",
-      });
+      toast({ title: "Submission Failed", description: result.message || "Could not submit your inquiry.", variant: "destructive" });
     }
     setIsInquiryLoading(false);
   };
 
-  const handleSheetOpenChange = (open: boolean) => {
+  const handleSheetOpenChange = async (open: boolean) => {
     setIsOpen(open);
     if (!open) {
-      // When closing, reset inquiry submitted state so form shows next time
       setIsInquirySubmitted(false); 
     } else {
-      if (conversation.length === 0 && !isAiLoading) {
-         setIsAiLoading(true);
-         // Use a small timeout to ensure sheet is visually open before AI "typing"
-         setTimeout(async () => {
-            const initialGreetingResult = await aiChatAction({message: "Hello", history: []});
-            if (initialGreetingResult.success && initialGreetingResult.response) {
-                 setConversation([{id: 'initial-ai-greeting', sender: 'ai', text: initialGreetingResult.response}]);
-            } else {
-                 setConversation([{id: 'initial-ai-greeting-fallback', sender: 'ai', text: "Hi, I'm Trish, your AI assistant! How can I help you with your financial questions today?"}]);
-            }
-            setIsAiLoading(false);
-        }, 100);
+      // Fetch initial greeting only if conversation is empty and AI is not already responding
+      if (conversation.length === 0 && !isAiResponding) {
+         await streamAiResponse("Hello", []);
       }
     }
   };
@@ -183,27 +189,15 @@ export function ChatWidget() {
                         : 'bg-muted text-foreground rounded-bl-none'
                 )}>
                   <p className="text-sm whitespace-pre-wrap">{msg.text}</p>
+                  {msg.sender === 'ai' && msg.isStreaming && msg.text.length === 0 && (
+                     <Sparkles className="h-4 w-4 ml-1 inline-block animate-pulse text-muted-foreground" />
+                  )}
+                   {msg.sender === 'ai' && msg.isStreaming && msg.text.length > 0 && (
+                     <span className="inline-block w-2 h-3 bg-muted-foreground animate-pulse ml-1 opacity-70"></span>
+                  )}
                 </div>
               </div>
             ))}
-            {isAiLoading && conversation.length === 0 && ( // Show loading for initial greeting
-                 <div className="flex justify-start mb-3">
-                    <div className="bg-muted text-foreground p-3 rounded-lg shadow rounded-bl-none">
-                        <p className="text-sm flex items-center">
-                            <Sparkles className="h-4 w-4 mr-2 animate-pulse" /> AI Trish is typing...
-                        </p>
-                    </div>
-                </div>
-            )}
-             {isAiLoading && conversation.length > 0 && ( // Show thinking for subsequent messages
-                 <div className="flex justify-start mb-3">
-                    <div className="bg-muted text-foreground p-3 rounded-lg shadow rounded-bl-none">
-                        <p className="text-sm flex items-center">
-                            <Sparkles className="h-4 w-4 mr-2 animate-pulse" /> Thinking...
-                        </p>
-                    </div>
-                </div>
-            )}
           </ScrollArea>
           
           <div className="px-4 pb-2 pt-2 border-t bg-background">
@@ -214,10 +208,10 @@ export function ChatWidget() {
                 onChange={(e) => setCurrentMessage(e.target.value)}
                 placeholder="Ask Trish anything..."
                 onKeyPress={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleAiMessageSend(); }}}
-                disabled={isAiLoading}
+                disabled={isAiResponding}
                 className="flex-grow"
               />
-              <Button onClick={handleAiMessageSend} disabled={isAiLoading || !currentMessage.trim()} size="icon">
+              <Button onClick={handleAiMessageSend} disabled={isAiResponding || !currentMessage.trim()} size="icon">
                 <Send className="h-5 w-5" />
               </Button>
             </div>
@@ -307,4 +301,3 @@ export function ChatWidget() {
     </>
   );
 }
-

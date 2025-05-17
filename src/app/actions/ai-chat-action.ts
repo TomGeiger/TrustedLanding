@@ -16,22 +16,13 @@ const AiClientChatInputSchema = z.object({
 
 export type AiClientChatInput = z.infer<typeof AiClientChatInputSchema>;
 
-interface AiChatActionResponse {
-  success: boolean;
-  response?: string;
-  errorMessage?: string;
-}
-
-export async function aiChatAction(
+export async function* aiChatAction(
   data: AiClientChatInput
-): Promise<AiChatActionResponse> {
+): AsyncGenerator<string, void, undefined> {
   const validation = AiClientChatInputSchema.safeParse(data);
 
   if (!validation.success) {
-    return {
-      success: false,
-      errorMessage: 'Invalid input: ' + validation.error.errors.map(e => e.message).join(', '),
-    };
+    throw new Error('Invalid input: ' + validation.error.errors.map(e => e.message).join(', '));
   }
 
   const { message, history: clientHistory } = validation.data;
@@ -47,17 +38,14 @@ export async function aiChatAction(
   };
 
   try {
-    const result = await conversationalAiChat(flowInput);
-    if (result && result.response) {
-      return { success: true, response: result.response };
-    } else {
-      return { success: false, errorMessage: 'AI did not return a response.' };
+    const stream = conversationalAiChat(flowInput);
+    for await (const chunk of stream) {
+      yield chunk;
     }
-  } catch (error) {
-    console.error('Error in AI chat action:', error);
-    return {
-      success: false,
-      errorMessage: 'Failed to get AI response. Please try again later.',
-    };
+  } catch (error: any) {
+    console.error('Error in AI chat action streaming:', error);
+    // The error will be caught by the client's try/catch around the for-await loop.
+    // No need to yield a special error string, just re-throw.
+    throw new Error(error.message || 'Failed to stream AI response. Please try again later.');
   }
 }
