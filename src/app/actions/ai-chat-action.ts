@@ -1,9 +1,9 @@
 
 'use server';
 
-import { conversationalAiChat, type AiChatInput, type AiChatHistoryItem } from '@/ai/flows/ai-chat-flow';
 import { z } from 'zod';
 
+// Schema remains for type definition, but not used for validation in this test version
 const AiClientChatInputSchema = z.object({
   message: z.string(),
   history: z.array(
@@ -16,17 +16,13 @@ const AiClientChatInputSchema = z.object({
 
 export type AiClientChatInput = z.infer<typeof AiClientChatInputSchema>;
 
-// Test version - yields hardcoded strings
+// Test version - yields hardcoded strings, validation removed
 export async function* aiChatAction(
   data: AiClientChatInput
 ): AsyncGenerator<string, void, undefined> {
   console.log('[TEST ACTION] aiChatAction called with input:', data.message);
 
-  // Simulate validation
-  const validation = AiClientChatInputSchema.safeParse(data);
-  if (!validation.success) {
-    throw new Error('Invalid input: ' + validation.error.errors.map(e => e.message).join(', '));
-  }
+  // Validation removed for this test to ensure no sync errors before first yield
 
   try {
     yield "Action Stream: Part 1. ";
@@ -50,42 +46,38 @@ export async function* aiChatAction(
 
 /*
 // Original version calling the flow:
-export async function* aiChatAction(
-  data: AiClientChatInput
-): AsyncGenerator<string, void, undefined> {
-  // Ensure this function behaves as an async generator immediately,
-  // even if synchronous validation fails.
-  // await Promise.resolve(); // Removed for testing
+// import { conversationalAiChat, type AiChatInput, type AiChatHistoryItem } from '@/ai/flows/ai-chat-flow';
+// export async function* aiChatAction(
+//   data: AiClientChatInput
+// ): AsyncGenerator<string, void, undefined> {
+//   const validation = AiClientChatInputSchema.safeParse(data);
 
-  const validation = AiClientChatInputSchema.safeParse(data);
+//   if (!validation.success) {
+//     throw new Error('Invalid input: ' + validation.error.errors.map(e => e.message).join(', '));
+//   }
 
-  if (!validation.success) {
-    // This error will now cause the promise for the generator to reject.
-    throw new Error('Invalid input: ' + validation.error.errors.map(e => e.message).join(', '));
-  }
+//   try {
+//     const { message, history: clientHistory } = validation.data;
 
-  try {
-    const { message, history: clientHistory } = validation.data;
+//     const genkitHistory: AiChatHistoryItem[] = (clientHistory || []).map(item => ({
+//       role: item.sender === 'user' ? 'user' : 'model',
+//       parts: [{ text: item.text }],
+//     }));
 
-    const genkitHistory: AiChatHistoryItem[] = (clientHistory || []).map(item => ({
-      role: item.sender === 'user' ? 'user' : 'model',
-      parts: [{ text: item.text }],
-    }));
+//     const flowInput: AiChatInput = {
+//       message,
+//       history: genkitHistory,
+//     };
 
-    const flowInput: AiChatInput = {
-      message,
-      history: genkitHistory,
-    };
-
-    const stream = conversationalAiChat(flowInput);
-    for await (const chunk of stream) {
-      yield chunk;
-    }
-    return; // Explicitly return to signify completion
-  } catch (error: any) {
-    console.error('Error in AI chat action streaming:', error);
-    // Re-throw the original error to be caught by the client
-    throw error;
-  }
-}
+//     const stream = conversationalAiChat(flowInput);
+//     for await (const chunk of stream) {
+//       yield chunk;
+//     }
+//     return; 
+//   } catch (error: any) {
+//     console.error('Error in AI chat action streaming:', error);
+//     // Re-throw the original error to be caught by the client
+//     throw error;
+//   }
+// }
 */
